@@ -1,89 +1,109 @@
+import math
 
-def evaluate (stack: list, index: int= 0):
-    token = stack.pop(index)
-    print(f'\tIndex: {index} -> {token}')
-    
-    if token == '(':
-        stack.insert(index, evaluate(stack, index))
-        return evaluate(stack, index +1)
+def isNumber (token: str) -> bool: 
+    try:
+        float(token)
+        return True
+    except ValueError:
+        return False
 
-    elif token == ')':
-        return stack.pop(index -1)
+def getNumber (token) -> float: 
+    try:
+        if int(token) == float(token):
+            return int(token)
+        else:
+            return float(token)
+    except ValueError:
+        return float(token)
 
-    elif token == '-':
-        a = stack.pop(index -1)
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, a - b)
-        return evaluate(stack, index -1)
+def validBinaryOperator (tokens: list, index: int) -> bool:
+    return isNumber(tokens[index -1]) and isNumber(tokens[index +1])
 
-    elif token == '+':
-        a = stack.pop(index -1)
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, a + b)
-        return evaluate(stack, index -1)
-    
-    elif token == '*':
-        a = stack.pop(index -1)
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, a * b)
-        return evaluate(stack, index -1)
-
-    elif token == '/':
-        a = stack.pop(index -1)
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, a / b)
-        return evaluate(stack, index -1)
-
-    elif token == '^':
-        a = stack.pop(index -1)
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, a ** b)
-        return evaluate(stack, index -1)
-
-    elif token == 'sqrt':
-        assert False,' Nope'
-        a = stack.pop(index -1)
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, a ** b)
-        return evaluate(stack, index -1)
-
-    elif token == '!=':
-        a = stack.pop(index -1)    
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, int(a != b))
-        return evaluate(stack, index -1)
-
-    elif token == '==':
-        a = stack.pop(index -1)    
-        b = evaluate(stack, index -1)
-        stack.insert(index -1, int(a == b))
-        return evaluate(stack, index -1)
-
+def validUnaryOperator (tokens: list, index: int, right: bool) -> bool:
+    if right:
+        return isNumber(tokens[index +1])
     else:
-        try:
-            if int(token) == float(token):
-                return int(token)
-            else:
-                return float(token)
-        except ValueError:
-            assert False, f'Unknown token: {token}'
+        return isNumber(tokens[index -1])
+
+def isSingleNumber (tokens: list, index: int) -> bool:
+    return tokens[index -1] == '(' and tokens[index +1] == ')'
 
 
-def parse (input: str):
-    stack = input.split()
+def evaluate (input: str):
+    tokens = input.split()
 
-    while len(stack) > 1:
-        print(f'Before: {stack}')
-        try:
-            float(stack[0])
-            value = evaluate(stack, 1)
-        except ValueError:
-            value = evaluate(stack, 0)
-        print(f'Returned: {value}\n\n')
-        stack.insert(0, value)
+    while len(tokens) > 1:
+        for i in range(len(tokens)):
+            token = tokens[i]
 
-    print(stack[0])
+            if token == '-' and validBinaryOperator(tokens, i):
+                a = getNumber(tokens[i -1])
+                b = getNumber(tokens[i +1])
+                for _ in range(3):
+                    tokens.pop(i -1)
+                tokens.insert(i -1, a - b)
+                break
 
+            elif token == '+' and validBinaryOperator(tokens, i): 
+                a = getNumber(tokens[i -1])
+                b = getNumber(tokens[i +1])
+                for _ in range(3):
+                    tokens.pop(i -1)
+                tokens.insert(i -1, a + b)
+                break
 
+            elif token == '*' and validBinaryOperator(tokens, i): 
+                a = getNumber(tokens[i -1])
+                b = getNumber(tokens[i +1])
+                for _ in range(3):
+                    tokens.pop(i -1)
+                tokens.insert(i -1, a * b)
+                break
 
-parse('( ( 10 - 2 ) + ( ( 2 ^ 2 ) * 4 ) ) / 12')
+            elif token == '/' and validBinaryOperator(tokens, i): 
+                a = getNumber(tokens[i -1])
+                b = getNumber(tokens[i +1])
+                for _ in range(3):
+                    tokens.pop(i -1)
+                
+                tokens.insert(i -1, getNumber(a / b))
+                break
+
+            elif token == '^' and validBinaryOperator(tokens, i): 
+                a = getNumber(tokens[i -1])
+                b = getNumber(tokens[i +1])
+                for _ in range(3):
+                    tokens.pop(i -1)
+                tokens.insert(i -1, a ** b)
+                break
+
+            elif token == '==' and validBinaryOperator(tokens, i): 
+                a = getNumber(tokens[i -1])
+                b = getNumber(tokens[i +1])
+                for _ in range(3):
+                    tokens.pop(i -1)
+                tokens.insert(i -1, int(a == b))
+                break
+
+            elif token == '!=' and validBinaryOperator(tokens, i): 
+                a = getNumber(tokens[i -1])
+                b = getNumber(tokens[i +1])
+                for _ in range(3):
+                    tokens.pop(i -1)
+                tokens.insert(i -1, int(a != b))
+                break
+
+            elif token == 'sqrt' and validUnaryOperator(tokens, i, True): 
+                a = getNumber(tokens[i +1])
+                for _ in range(2):
+                    tokens.pop(i)
+                tokens.insert(i, getNumber(math.sqrt(a)))
+                break
+
+            elif isNumber(token) and isSingleNumber(tokens, i):
+                for _ in range(3):
+                    tokens.pop(i -1)
+                tokens.insert(i -1, token)
+                break
+
+    print(tokens[0])

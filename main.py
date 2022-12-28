@@ -240,4 +240,9 @@ def min (value_1, value_2):
     """
     return _if(less(value_1, value_2), value_1, value_2)
 
-print(divide(add(subtract(10, 2), multiply(_raise(2, 2), 4)), 12))
+
+from parser import evaluate
+
+out = max(max(69, 420), 666)
+
+evaluate(out)
