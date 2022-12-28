@@ -1,12 +1,21 @@
 
+LaTeX_output = False
+
 def engulf (value):
     """
         engulf
     """
-    if len(str(value)) > 1:
-        return '\\left(' +str(value) +'\\right)'
+    if LaTeX_output:
+        if len(str(value)) > 1:
+            return '\\left(' +str(value) +'\\right)'
+        else:
+            return str(value)
     else:
-        return str(value)
+        try:
+            float(value)
+            return str(value)
+        except ValueError:
+            return '( ' +str(value) +' )'
 
 def add (value_1, value_2):
     """
@@ -24,31 +33,46 @@ def multiply (value_1, value_2):
     """
         multiply
     """
-    return engulf(value_1) +' \\cdot ' +engulf(value_2)
+    if LaTeX_output:
+        return engulf(value_1) +' \\cdot ' +engulf(value_2)
+    else:
+        return engulf(value_1) +' * ' +engulf(value_2)
 
 def divide (value_1, value_2):
     """
         divide
     """
-    return '\\frac{' +engulf(value_1) +'}{' +engulf(value_2) +'}'
+    if LaTeX_output:
+        return '\\frac{' +engulf(value_1) +'}{' +engulf(value_2) +'}'
+    else:
+        return engulf(value_1) +' / ' +engulf(value_2)
 
 def _raise (value_1, value_2):
     """
         raise
     """
-    return engulf(value_1) +'^{' +engulf(value_2) +'}'
+    if LaTeX_output:
+        return engulf(value_1) +'^{' +engulf(value_2) +'}'
+    else:
+        return engulf(value_1) +' ^ ' +engulf(value_2)
 
 def sqrt (value):
     """
         sqrt
     """
-    return '\\sqrt{' +engulf(value) +'}'
+    if LaTeX_output:
+        return '\\sqrt{' +engulf(value) +'}'
+    else:
+        return 'sqrt ' +engulf(value)
 
 def lim_x (limit, expression):
     """
         lim_x
     """
-    return '\\lim_{x\\to' +engulf(limit) +'}' +engulf(expression)
+    if LaTeX_output:
+        return '\\lim_{x\\to' +engulf(limit) +'}' +engulf(expression)
+    else:
+        return 'Unimplemented'
 
 def _not (boolean):
     """
@@ -57,9 +81,7 @@ def _not (boolean):
         Boolean here are as such:
             True is 1 and False is 0
         If False is 0 and True is different than 0 then 
-        you can replace this function by:
-            return divide(subtract(lim_x(boolean, divide(boolean, 'x')), 1), -1)
-        or use parseBoolean, which does the same as diffZero
+        parse your values trough parseBoolean, which does the same as diffZero
     """
     return divide(subtract(boolean, 1), -1)
 
@@ -73,15 +95,19 @@ def diffZero (value):
     """
         diffZero
     """
-    return lim_x(value, divide(value, 'x'))
-    #return engulf(value) +'\\neq 0'
+    if LaTeX_output:
+        return lim_x(value, divide(value, 'x'))
+    else:
+        return engulf(value) +' != 0'
 
 def equalZero (value):
     """
         equalZero
     """
-    return _not(diffZero(value))
-    #return engulf(value) + ' == 0'
+    if LaTeX_output:
+        return _not(diffZero(value))
+    else:
+        return engulf(value) + ' == 0'
 
 def diffNumber (value_1, value_2):
     """
@@ -214,4 +240,4 @@ def min (value_1, value_2):
     """
     return _if(less(value_1, value_2), value_1, value_2)
 
-print(max(420,69))
+print(divide(add(subtract(10, 2), multiply(_raise(2, 2), 4)), 12))
