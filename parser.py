@@ -77,14 +77,6 @@ def evaluate (input: str):
                 tokens.insert(i -1, a ** b)
                 break
 
-            elif token == '==' and validBinaryOperator(tokens, i): 
-                a = getNumber(tokens[i -1])
-                b = getNumber(tokens[i +1])
-                for _ in range(3):
-                    tokens.pop(i -1)
-                tokens.insert(i -1, int(a == b))
-                break
-
             elif token == '!=' and validBinaryOperator(tokens, i): 
                 a = getNumber(tokens[i -1])
                 b = getNumber(tokens[i +1])

@@ -104,10 +104,7 @@ def equalZero (value):
     """
         equalZero
     """
-    if LaTeX_output:
-        return _not(diffZero(value))
-    else:
-        return engulf(value) + ' == 0'
+    return _not(diffZero(value))
 
 def diffNumber (value_1, value_2):
     """
@@ -241,8 +238,16 @@ def min (value_1, value_2):
     return _if(less(value_1, value_2), value_1, value_2)
 
 
+
 from parser import evaluate
+#import pyperclip
+
+#LaTeX_output = True
 
 out = max(max(69, 420), 666)
+
+print(out)
+print(len(out))
+#pyperclip.copy(out)
 
 evaluate(out)
