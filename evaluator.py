@@ -91,7 +91,9 @@ def evaluate (input: str) -> float:
             i += 1
         
         if not evaluated:
-            assert False, f'Didn\'t evaluate anything: {tokens}'
+            if len(tokens) > 2000:
+                tokens = tokens[:2000]
+            assert False, f'Didn\'t evaluate anything, expression:\n{tokens}..'
 
     try:
         i = int(tokens[0])

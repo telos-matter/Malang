@@ -1,5 +1,5 @@
 
-LaTeX_output = False
+LaTeX_output = None
 
 def engulf (value):
     """
@@ -244,15 +244,15 @@ def min (value_1, value_2):
 
 
 from evaluator import evaluate
-#import pyperclip
+# import pyperclip
 
-#LaTeX_output = True
+LaTeX_output = False
 
-# out = max(max(max(69, 420), 666), 9999)
-out = greaterEqual(1.1,1.1)
+out = max(max(69, 420), 666)
 
 print(out)
 print(len(out))
-#pyperclip.copy(out)
+
+# pyperclip.copy(out)
 
 print(evaluate(out))
