@@ -104,3 +104,6 @@ def evaluate (input: str) -> float:
             return f
     except ValueError:
         return float(tokens[0])
+
+# TODO imporve by substuting 0 * (xxxx) with 0
+
