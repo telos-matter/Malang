@@ -1,11 +1,40 @@
+"""
+Programming using, literally, only math
 
-LaTeX_output = None
+More specifically, using only the basic arithmetic operators, i.e. +,-,* and /
+, along side ^ (exponents) (which are just repeated multiplication) and
+// (integer division) (which is "controlled" subtraction)
+, and other basic functions like sqrt, ln, sin and cos
+
+There is one big exception (which hopefully I can resolve in the future) which
+is the use of limits in the central-building block/function
+of all of this, which is the
+different-than-zero function, other than that, it is all just basic operators
+and functions, not even the |x| (abs) function, or sign function..
+
+HOW-TO:
+. Simply write the function/program that you want at the bottom
+using these functions
+. Specify whether you want LaTeX output or simple form output
+so that it can be evaluated by the evaluator.py script
+. Specify the basic option if you want the output to be basic,
+for example, if it is set to false, instead of outputting sqrt(x^2) for the abs function
+it will output abs(x) directly and so on
+. Run the script
+"""
+
+# Don't specify the options here, better at the bottom
+LATEX_OUTPUT = None
+BASIC = None
 
 def engulf (value):
     """
-        engulf
+        Parenthesize
+        
+        Puts parentheses around the passed value if it's not a simple
+        number, i.e. it is an expression or function
     """
-    if LaTeX_output:
+    if LATEX_OUTPUT:
         try:
             float(value)
             return str(value)
@@ -20,233 +49,323 @@ def engulf (value):
 
 def add (value_1, value_2):
     """
-        add
+        Addition
     """
     return engulf(value_1) +' + ' +engulf(value_2)
 
-def subtract (value_1, value_2):
+def sub (value_1, value_2):
     """
-        subtract
+        Subtraction
     """
     return engulf(value_1) +' - ' +engulf(value_2)
 
-def multiply (value_1, value_2):
+def mul (value_1, value_2):
     """
-        multiply
+        Multiplication
     """
-    if LaTeX_output:
+    if LATEX_OUTPUT:
         return engulf(value_1) +' \\cdot ' +engulf(value_2)
     else:
         return engulf(value_1) +' * ' +engulf(value_2)
 
-def divide (value_1, value_2):
+def div (value_1, value_2):
     """
-        divide
+        Division
     """
-    if LaTeX_output:
+    if LATEX_OUTPUT:
         return '\\frac{' +engulf(value_1) +'}{' +engulf(value_2) +'}'
     else:
         return engulf(value_1) +' / ' +engulf(value_2)
 
-def _raise (value_1, value_2):
+def idiv (value_1, value_2):
     """
-        raise
+        Integer division
+        
+        //
     """
-    if LaTeX_output:
+    if LATEX_OUTPUT:
+        return engulf(value_1) +'//' +engulf(value_2) # There is no symbol for it in LaTeX
+    else:
+        return engulf(value_1) +' // ' +engulf(value_2)
+
+def pow (value_1, value_2):
+    """
+        Exponential
+        
+        value_1 raised to the power of value_2, value_1 ^ value_2
+    """
+    if LATEX_OUTPUT:
         return engulf(value_1) +'^{' +engulf(value_2) +'}'
     else:
         return engulf(value_1) +' ^ ' +engulf(value_2)
 
 def sqrt (value):
     """
-        sqrt
+        Square root
     """
-    if LaTeX_output:
+    if LATEX_OUTPUT:
         return '\\sqrt{' +engulf(value) +'}'
     else:
         return 'sqrt ' +engulf(value)
 
-def lim_x (limit, expression):
+def ln (value):
     """
-        lim_x
+        Natural Logarithm
     """
-    if LaTeX_output:
-        return '\\lim_{x\\to' +engulf(limit) +'}' +engulf(expression)
+    if LATEX_OUTPUT:
+        return '\\ln' +engulf(value)
     else:
-        assert False, 'Not yet implemented!'
+        return 'ln ' +engulf(value)
+
+def sin (value):
+    """
+        Sine
+    """
+    if LATEX_OUTPUT:
+        return '\\sin' +engulf(value)
+    else:
+        return 'sin ' +engulf(value)
+
+def cos (value): # TODO: Somehow just from sin?
+    """
+        Cosine
+    """
+    if LATEX_OUTPUT:
+        return '\\cos' +engulf(value)
+    else:
+        return 'cos ' +engulf(value)
+
+# Those are the building blocks/functions, the rest is just a combination of those
+# With the exception of diffZero, upon which everything is based, lol
+
+def diffZero (value): # TODO: find a solution to implement it with basic operations
+    """
+        Different than zero
+        
+        Tests if the value is different than zero
+    """
+    if LATEX_OUTPUT:
+        return '\\lim_{x\\to' +engulf(value) +'}' +engulf(div(value, 'x'))
+    else:
+        return engulf(value) +' != 0' # Not going to bother by implementing limits in the evaluator just for this one expression
 
 def _not (boolean):
     """
-        _not
-
-        Boolean here are as such:
-            True is 1 and False is 0
-        If False is 0 and True is different than 0 then 
-        parse your values trough parseBoolean, which does the same as diffZero
+        The Not logical operator, !
     """
-    return divide(subtract(boolean, 1), -1)
-
-def parseBoolean (value):
-    """
-        parseBoolean
-    """
-    return lim_x(value, divide(value, 'x'))
-
-def diffZero (value):
-    """
-        diffZero
-    """
-    if LaTeX_output:
-        return lim_x(value, divide(value, 'x'))
-    else:
-        return engulf(value) +' != 0' # TODO: use lim_x
+    return div(sub(boolean, 1), -1)
 
 def equalZero (value):
     """
-        equalZero
+        Equal to zero
+        
+        Tests if the value is equal to zero
     """
     return _not(diffZero(value))
 
 def diffNumber (value_1, value_2):
     """
-        diffNumber
+        Different numbers
+        
+        Tests if value_1 is different than value_2
     """
-    return diffZero(subtract(value_1, value_2))
+    return diffZero(sub(value_1, value_2))
 
 def equalNumber (value_1, value_2):
     """
-        equalNumber
+        Equal numbers
+        
+        Tests if value_1 and value_2 are equal
     """
     return _not(diffNumber(value_1, value_2))
 
 def abs (value):
     """
-        abs
+        Absolute value
     """
-    return sqrt(_raise(value, 2))
+    if BASIC:
+        return sqrt(pow(value, 2))
+    else:
+        if LATEX_OUTPUT:
+            return '\\lvert' +value +'\\rvert'
+        else:
+            return 'abs ' +engulf(value)
+
+def tan (value):
+    """
+        Tangent
+    """
+    if BASIC:
+        return div(sin(value), cos(value))
+    else:
+        if LATEX_OUTPUT:
+            return '\\tan' +engulf(value)
+        else:
+            return 'tan ' +engulf(value)
 
 def _if (boolean, value_1, value_2):
     """
-        _if
+        If statement
+        
+        Evaluates to value_1 if the boolean is true, and to value_2 if it is false
     """
-    return subtract(multiply(boolean, value_1), multiply(subtract(boolean, 1), value_2))
+    return sub(mul(boolean, value_1), mul(sub(boolean, 1), value_2))
 
 def _and (boolean_1, boolean_2):
     """
-        _and
+        The And logical operator
     """
-    return multiply(boolean_1, boolean_2)
+    return mul(boolean_1, boolean_2)
 
 def _or (boolean_1, boolean_2):
     """
-        _or
+        The Or logical operator
     """
     return _if(_and(equalZero(boolean_1), equalZero(boolean_2)), 0, 1)
 
 def xor (boolean_1, boolean_2):
     """
-        xor
+        The XOR logical operator
     """
     return _if(_and(boolean_1, boolean_2), 0, _or(boolean_1, boolean_2))
 
 def nand (boolean_1, boolean_2):
     """
-        nand
+        The NAND logical operator
     """
     return _not(_and(boolean_1, boolean_2))
 
 def nor (boolean_1, boolean_2):
     """
-        nor
+        The NOR logical operator
     """
     return _not(_or(boolean_1, boolean_2))
 
 def xnor (boolean_1, boolean_2):
     """
-        xnor
+        The XNOR logical operator
     """
     return _not(xor(boolean_1, boolean_2))
 
 def diffSign (value_1, value_2):
     """
-        diffSign
-
-        +, - and 0
+        Different sign
+        
+        Tests if value_1 and value_2 have different signs (+, - and 0)
     """
-    return _if(_and(equalZero(value_1), equalZero(value_2)), 0, _if(_or(equalZero(value_1), equalZero(value_2)), 1, diffNumber(multiply(value_1, value_2), multiply(abs(value_1), abs(value_2)))))
+    return _if(_and(equalZero(value_1), equalZero(value_2)), 0, _if(_or(equalZero(value_1), equalZero(value_2)), 1, diffNumber(mul(value_1, value_2), mul(abs(value_1), abs(value_2)))))
 
 def sameSign (value_1, value_2):
     """
-        sameSign
+        Same sign
+        
+        Tests if value_1 and value_2 have the same sign (+, - and 0)
     """
     return _not(diffSign(value_1, value_2))
 
 def greaterZero (value):
     """
-        greaterZero
+        Greater than zero
+        
+        Tests if the value is greater than zero, value > 0
     """
     return _if(equalZero(value),0 , diffSign(value, -1))
 
 def greater (value_1, value_2):
     """
-        greater
+        Greater than
+        
+        Tests if value_1 is greater than value_2, value_1 > value_2
     """
-    return greaterZero(subtract(value_1, value_2))
+    return greaterZero(sub(value_1, value_2))
 
 def lessZero (value):
     """
-        lessZero
+        Less than zero
+        
+        Tests if the value is less than zero, value < 0
     """
     return _if(equalZero(value), 0, diffSign(value, 1))
 
 def less (value_1, value_2):
     """
-        less
+        Less than
+        
+        Tests if value_1 is less than value_2, value_1 < value_2
     """
-    return lessZero(subtract(value_1, value_2))
+    return lessZero(sub(value_1, value_2))
 
 def greaterEqualZero (value):
     """
-        greaterEqualZero
+        Greater than or equal to zero
+        
+        Tests if the value is greater than or equal to zero, value >= 0
     """
     return _or(equalZero(value), greaterZero(value))
 
 def greaterEqual (value_1, value_2):
     """
-        greaterEqual
+        Greater than or equal to
+        
+        Tests if value_1 is greater than or equal to value_2, value_1 >= value_2
     """
-    return greaterEqualZero(subtract(value_1, value_2))
+    return greaterEqualZero(sub(value_1, value_2))
 
 def lessEqualZero (value):
     """
-        lessEqualZero
+        Less than or equal to zero
+        
+        Tests if the value is less than or equal to zero, value <= 0
     """
     return _or(equalZero(value), lessZero(value))
 
 def lessEqual (value_1, value_2):
     """
-        lessEqual
+        Less than or equal to
+        
+        Tests if value_1 is less than or equal to value_2, value_1 <= value_2
     """
-    return lessEqualZero(subtract(value_1, value_2))
+    return lessEqualZero(sub(value_1, value_2))
+
+def sign (value):
+    """
+        Sign
+        
+        Returns -1 if the value is negative, 0 if equal to zero, and 1 if positive
+    """
+    return _if(lessZero(value), -1, _if(equalZero(value), 0, 1))
 
 def max (value_1, value_2):
     """
-        max
+        Max
+        
+        Returns the maximum of the two
     """
     return _if(greater(value_1, value_2), value_1, value_2)
 
 def min (value_1, value_2):
     """
-        min
+        Min
+        
+        Returns the minimum of the two
     """
     return _if(less(value_1, value_2), value_1, value_2)
 
+def mod (value_1, value_2):
+    """
+        Modulus
+    """
+    if BASIC:
+        return sub(value_1)
 
+# Those are the functions available, now write you program like in the example below
+
+BASIC = True
+LATEX_OUTPUT = False
 
 from evaluator import evaluate
 # import pyperclip
 
-LaTeX_output = False
 
 out = max(max(69, 420), 666)
 # out = greater(2, 5)

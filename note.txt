@@ -1,0 +1,5 @@
+Booleans here are as such:
+            True is 1 and False is 0
+
+        If False is 0 and True is different than 0 then 
+        parse your values trough parseBoolean, which does the same as diffZero
