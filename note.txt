@@ -3,3 +3,6 @@ Booleans here are as such:
 
         If False is 0 and True is different than 0 then 
         parse your values trough parseBoolean, which does the same as diffZero
+
+
+Keep in mind (that in order to keep in mathematically right) when using the _if statement that you can't just put what ever in else, like div by zero

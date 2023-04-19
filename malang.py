@@ -207,6 +207,12 @@ def tan (x):
         else:
             return 'tan ' +engulf(x)
 
+def log (x, base):
+    """
+        Logarithm of base
+    """
+    return div(ln(x), ln(base))
+
 def _if (boolean, a, b):
     """
         If statement
@@ -345,7 +351,7 @@ def sign (x):
         
         Returns -1 if the x is negative, 0 if equal to zero, and 1 if positive
     """
-    return _if(lessZero(x), -1, _if(null(x), 0, 1))
+    return _if(negative(x), -1, _if(null(x), 0, 1))
 
 def max (a, b):
     """
@@ -395,7 +401,24 @@ def _int (x):
     """
     return mul(sign(x), floor(abs(x)))
 
+def decimal (x):
+    """
+        Decimal
+        
+        Returns the part after the decimal point of x, with the sign of x
+    """
+    return sub(x, _int(x))
+
+def round (x):
+    """
+        Round
+        
+        Rounds x to the closest integer
+    """
+    return mul(sign(x), _if(less(decimal(abs(x)), 0.5), _int(abs(x)), add(_int(abs(x)), 1)))
+
 # TODO: Add factorial, combination and other probability useful stuff
+# TODO: How about a rand function?
 
 # Those are the functions available, now write you program like in the example below
 
@@ -410,4 +433,5 @@ if LATEX_OUTPUT:
 else:
     from evaluator import evaluate
     print(program)
+    print(len(program))
     print(evaluate(program))
