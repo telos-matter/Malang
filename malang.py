@@ -39,13 +39,21 @@ def engulf (x):
             float(x)
             return str(x)
         except ValueError:
-            return '\\left(' +str(x) +'\\right)'
+            x = str(x)
+            if len(x) == 1:
+                return ' ' +x +' '
+            else:
+                return '\\left(' +x +'\\right)'
     else:
         try:
             float(x)
             return str(x)
         except ValueError:
-            return '( ' +str(x) +' )'
+            x = str(x)
+            if len(x) == 1:
+                return x
+            else:
+                return '( ' +str(x) +' )'
 
 def add (a, b):
     """
@@ -164,7 +172,11 @@ def equalZero (x):
     return _not(diffZero(x))
 
 def null (x):
-    """Alias for equalZero"""
+    """
+        Alias for equalZero
+        
+        Tests if x is equal to zero
+    """
     return equalZero(x)
 
 def diffNumber (a, b):
@@ -417,15 +429,46 @@ def round (x):
     """
     return mul(sign(x), _if(less(decimal(abs(x)), 0.5), _int(abs(x)), add(_int(abs(x)), 1)))
 
+def divisible (a, b):
+    """
+        Divisible
+        
+        Checks if a is divisible by b, i.e. a % b == 0
+    """
+    return null(mod(a, b))
+
+def even (x):
+    """
+        Even
+        
+        Checks if x is even, 0 is even
+    """
+    return divisible(x, 2)
+
+def odd (x):
+    """
+        Odd
+        
+        Checks if x is odd
+    """
+    return _not(even(x))
+
 # TODO: Add factorial, combination and other probability useful stuff
 # TODO: How about a rand function?
 
-# Those are the functions available, now write you program like in the example below
+#############################################################################################################
+# Those are the available functions, now specify the options and write you program like in the examples below
 
 BASIC = True
 LATEX_OUTPUT = False
 
+# Computes the max of these numbers
 program = max(max(69, 420), 666)
+
+# FizzBuzz, evaluates to 3 if the number is devisable by 5 and 3, to 2 if divisible only by 5, to 1 if divisible only by 3, and to 0 otherwise
+number = 15
+program = _if(_and(divisible(number, 5), divisible(number, 3)), 3, _if(divisible(number, 5), 2, _if(divisible(number, 3), 1, 0)))
+
 
 if LATEX_OUTPUT:
     print(program)

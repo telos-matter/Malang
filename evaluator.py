@@ -189,3 +189,5 @@ def evaluate (input: str) -> float:
             return f
     except ValueError:
         return tokens[0]
+
+# TODO: Improve by finding repeating sequences and computing them once
