@@ -152,18 +152,17 @@ def even (x):
 def odd (x):
     return _not(even(x))
 
-
-# program = max(max(max(max(max(max(max(69, 420), 666), 1000), 2), 5), 9999), 99999)
-program = max(-1, -2)
-
-for i in range(500):
-    program = max(program, i)
-
+# FizzBuzz, evaluates to 3 if the number is devisable by 5 and 3, to 2 if divisible only by 5, to 1 if divisible only by 3, and to 0 otherwise
+number = 15
+program = _if(_and(divisible(number, 5), divisible(number, 3)), 3, _if(divisible(number, 5), 2, _if(divisible(number, 3), 1, 0)))
 # print(program)
 
 import time
 start = time.time()
 out = malang.evaluateOP(program[0], program[1])
 end = time.time()
+
+if int(out) == float (out):
+    out = int(out)
 
 print(f"Outputted {out}\nComputed in {end -start} sec")

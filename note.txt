@@ -1,8 +1,5 @@
 Booleans here are as such:
             True is 1 and False is 0
 
-        If False is 0 and True is different than 0 then 
-        parse your values trough parseBoolean, which does the same as diffZero
 
-
-Keep in mind (that in order to keep in mathematically right) when using the _if statement that you can't just put what ever in else, like div by zero
+Keep in mind (that in order to keep stuff mathematically correct) when using the _if statement you can't just put whatever in else, like div by zero

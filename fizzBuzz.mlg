@@ -1,0 +1,15 @@
+fizzBuzz (n) {
+	if (divisible(n, 5) & divisible(n, 3) {
+		ret = 3;
+	} elif (divisible(n, 5) {
+		ret = 2;
+	} elif (divisible(n, 3) {
+		ret = 1;
+	} else {
+		ret = 0;
+	}
+}
+
+main () {
+	fizzBuzz (15);
+}
