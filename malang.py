@@ -1,5 +1,4 @@
 import math
-from functools import cache
 
 def iota ():
     iota.counter += 1
@@ -56,19 +55,14 @@ def COS (n):
 """
 A program is always a tuple of two things:
 1. The op_code
-2. Another tuple of the args
+2. A list of the args
 Then ofc the individual args can be another program
 """
 
-@cache
-def evaluateOP (op_code: int, args: tuple) -> float:
-    temp = []
-    for arg in args:
+def evaluateOP (op_code: int, args: list) -> float:
+    for i, arg in enumerate(args[:]):
         if isinstance(arg, tuple):
-            temp.append(evaluateOP(arg[0], arg[1]))
-        else:
-            temp.append(arg)
-    args = tuple(temp)
+            args[i] = evaluateOP(arg[0], arg[1])
     
     if op_code == OP_DIFFZERO:
         n = args[0]
