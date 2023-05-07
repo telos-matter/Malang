@@ -3,6 +3,8 @@
 
 Programming using, literally, only math
 
+Still working on the "compiled"
+
 <br>
 
 > **Note** 
