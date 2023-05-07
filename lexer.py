@@ -153,14 +153,17 @@ def odd (x):
     return _not(even(x))
 
 
-program = max(max(max(max(max(max(max(69, 420), 666), 1000), 2), 5), 9999), 99999)
+# program = max(max(max(max(max(max(max(69, 420), 666), 1000), 2), 5), 9999), 99999)
+program = max(-1, -2)
+
+for i in range(500):
+    program = max(program, i)
+
 # print(program)
 
 import time
 start = time.time()
-
 out = malang.evaluateOP(program[0], program[1])
-
 end = time.time()
 
 print(f"Outputted {out}\nComputed in {end -start} sec")

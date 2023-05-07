@@ -1,4 +1,5 @@
 import math
+import sys
 
 def iota ():
     iota.counter += 1
@@ -58,6 +59,8 @@ A program is always a tuple of two things:
 2. A list of the args
 Then ofc the individual args can be another program
 """
+
+sys.setrecursionlimit(10_000) # If you are wondering, cuz i was, if the change is global (to all future python instances), no it is not, i tested it
 
 def evaluateOP (op_code: int, args: list) -> float:
     for i, arg in enumerate(args[:]):
