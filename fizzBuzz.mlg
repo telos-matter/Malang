@@ -11,5 +11,5 @@ fizzBuzz (n) {
 }
 
 main () {
-	fizzBuzz (15);
+	ret = fizzBuzz (15);
 }
