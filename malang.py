@@ -54,15 +54,21 @@ def COS (n):
 
 
 """
-Always a tuple of the OP_CODE, and the list of ARGS
-Then ofc the individual args can be another tuple
+A program is always a tuple of two things:
+1. The op_code
+2. Another tuple of the args
+Then ofc the individual args can be another program
 """
 
-# @cache
-def evaluateOP (op_code: int, args: list) -> float:
-    for i, arg in enumerate(args[:]):
+@cache
+def evaluateOP (op_code: int, args: tuple) -> float:
+    temp = []
+    for arg in args:
         if isinstance(arg, tuple):
-            args[i] = evaluateOP(arg[0], arg[1])
+            temp.append(evaluateOP(arg[0], arg[1]))
+        else:
+            temp.append(arg)
+    args = tuple(temp)
     
     if op_code == OP_DIFFZERO:
         n = args[0]
@@ -110,11 +116,3 @@ def evaluateOP (op_code: int, args: list) -> float:
     
     else:
         raise Exception(f"Unknown OP: {op_code}, with args: {args}")
-
-# program = (OP_ADD, [(OP_ADD, [10, 10]), 20])
-# out = evaluateOP(program[0], program[1])
-# print(out)
-
-
-# TODO: Add factorial, combination and other probability useful stuff
-# TODO: How about a rand function?

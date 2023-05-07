@@ -1,37 +1,37 @@
 import malang
 
 def diffZero (n):
-    return (malang.OP_DIFFZERO, [n])
+    return (malang.OP_DIFFZERO, (n,))
 
 def add (a, b):
-    return (malang.OP_ADD, [a, b])
+    return (malang.OP_ADD, (a, b))
 
 def sub (a, b):
-    return (malang.OP_SUB, [a, b])
+    return (malang.OP_SUB, (a, b))
 
 def mul (a, b):
-    return (malang.OP_MUL, [a, b])
+    return (malang.OP_MUL, (a, b))
 
 def div (a, b):
-    return (malang.OP_DIV, [a, b])
+    return (malang.OP_DIV, (a, b))
 
 def idiv (a, b):
-    return (malang.OP_IDIV, [a, b])
+    return (malang.OP_IDIV, (a, b))
 
 def pow (a, b):
-    return (malang.OP_POW, [a, b])
+    return (malang.OP_POW, (a, b))
 
 def sqrt (n):
-    return (malang.OP_SQRT, [n])
+    return (malang.OP_SQRT, (n,))
 
 def ln (n):
-    return (malang.OP_LN, [n])
+    return (malang.OP_LN, (n,))
 
 def sin (n):
-    return (malang.OP_SIN, [n])
+    return (malang.OP_SIN, (n,))
 
 def cos (n):
-    return (malang.OP_COS, [n])
+    return (malang.OP_COS, (n,))
 
 ###################################
 
@@ -152,15 +152,21 @@ def even (x):
 def odd (x):
     return _not(even(x))
 
+# TODO: Add factorial, combination and other probability useful stuff
+# TODO: How about a rand function?
 
-program = max(max(max(max(max(max(69, 420), 666), 1000), 2), 5), 9999)
+# program = add(add(10, 10), 20)
+# program = max(max(max(max(max(max(69, 420), 666), 1000), 2), 5), 9999)
+program = max(max(max(max(69, 420), 666), 1000), 2)
 # print(program)
 
 import time
 start = time.time()
 
 out = malang.evaluateOP(program[0], program[1])
+# It took this much 0.0003, MAX TIME, for the big max max max program, no caching
+# It took this much 0.16, for the none-commented program with caching
 
 end = time.time()
 
-print(f"Outputed {out}\nComputed in {end -start} sec")
+print(f"Outputted {out}\nComputed in {end -start} sec")
