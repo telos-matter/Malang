@@ -1,12 +1,13 @@
 import math
 import sys
 
-def iota ():
+# TODO mention tsoading
+
+def iota () -> int:
     iota.counter += 1
     return iota.counter
 iota.counter = -1
 
-OP_DIFFZERO = iota()
 OP_ADD = iota()
 OP_SUB = iota()
 OP_MUL = iota()
@@ -19,37 +20,34 @@ OP_SIN = iota()
 OP_COS = iota()
 OP_COUNT = iota() # Not using it really
 
-def DIFFZERO (n):
-    return int(n != 0)
-
-def ADD (a, b):
+def ADD (a: float, b: float) -> float:
     return a + b
 
-def SUB (a, b):
+def SUB (a: float, b: float) -> float:
     return a - b
 
-def MUL (a, b):
+def MUL (a: float, b: float) -> float:
     return a * b
 
-def DIV (a, b):
+def DIV (a: float, b: float) -> float:
     return a / b
 
-def IDIV (a, b):
+def IDIV (a: float, b: float) -> float:
     return a // b
 
-def POW (a, b):
+def POW (a: float, b: float) -> float:
     return a ** b
 
-def SQRT (n):
+def SQRT (n: float) -> float:
     return math.sqrt(n)
 
-def LN (n):
+def LN (n: float) -> float:
     return math.log(n)
 
-def SIN (n):
+def SIN (n: float) -> float:
     return math.sin(n)
 
-def COS (n):
+def COS (n: float) -> float:
     return math.cos(n)
 
 
@@ -57,7 +55,7 @@ def COS (n):
 A program is always a tuple of two things:
 1. The op_code
 2. A list of the args
-Then ofc the individual args can be another program
+Then ofc the individual args can be another program, i.e. another tuple
 """
 
 sys.setrecursionlimit(10_000) # If you are wondering, cuz i was, if the change is global (to all future python instances), no it is not, i tested it
@@ -67,11 +65,7 @@ def evaluateOP (op_code: int, args: list) -> float:
         if isinstance(arg, tuple):
             args[i] = evaluateOP(arg[0], arg[1])
     
-    if op_code == OP_DIFFZERO:
-        n = args[0]
-        return DIFFZERO(n)
-    
-    elif op_code == OP_ADD:
+    if op_code == OP_ADD:
         a, b = args
         return ADD(a, b)
     

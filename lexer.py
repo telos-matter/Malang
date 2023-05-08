@@ -1,8 +1,5 @@
 import malang
 
-def diffZero (n):
-    return (malang.OP_DIFFZERO, [n])
-
 def add (a, b):
     return (malang.OP_ADD, [a, b])
 
@@ -35,14 +32,26 @@ def cos (n):
 
 ###################################
 
-def _not (boolean):
-    return div(sub(boolean, 1), -1)
+def __POSITIVE_MOD (a, b): # Only used in equalZero
+    return sub(a, mul(idiv(a, b), b))
 
-def equalZero (x):
-    return _not(diffZero(x))
+def __POSITIVE_FLOOR (x): # Only used in equalZero
+    return sub(x, __POSITIVE_MOD(x, 1))
+
+def __FUNCTION (x): # Only used in equalZero
+    return div(pow(x, 2), add(pow(x, 2), 1))
+
+def equalZero (x): # "Unfortunately", with this implementation, the precision limit is 0.000_000_01, i.e. 0.00000001 == 0
+    return __POSITIVE_FLOOR(sub(1, __FUNCTION(x)))
 
 def null (x):
     return equalZero(x)
+
+def _not (boolean):
+    return div(sub(boolean, 1), -1)
+
+def diffZero(x):
+    return _not(null(x))
 
 def diffNumber (a, b):
     return diffZero(sub(a, b))
@@ -131,11 +140,11 @@ def mod (a, b):
 def floor (x):
     return sub(x, mod(x, 1))
 
-def ceil (x):
-    return add(floor(x), 1)
-
 def _int (x):
     return mul(sign(x), floor(abs(x)))
+
+def ceil (x):
+    return _if(equalNumber(_int(x), x), x, add(floor(x), 1))
 
 def decimal (x):
     return sub(x, _int(x))
@@ -155,7 +164,6 @@ def odd (x):
 # FizzBuzz, evaluates to 3 if the number is devisable by 5 and 3, to 2 if divisible only by 5, to 1 if divisible only by 3, and to 0 otherwise
 number = 15
 program = _if(_and(divisible(number, 5), divisible(number, 3)), 3, _if(divisible(number, 5), 2, _if(divisible(number, 3), 1, 0)))
-# print(program)
 
 import time
 start = time.time()
