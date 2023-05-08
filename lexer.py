@@ -32,6 +32,9 @@ def cos (n):
 
 ###################################
 
+def abs (x):
+    return sqrt(pow(x, 2))
+
 def __POSITIVE_MOD (a, b): # Only used in equalZero
     return sub(a, mul(idiv(a, b), b))
 
@@ -39,9 +42,9 @@ def __POSITIVE_FLOOR (x): # Only used in equalZero
     return sub(x, __POSITIVE_MOD(x, 1))
 
 def __FUNCTION (x): # Only used in equalZero
-    return div(pow(x, 2), add(pow(x, 2), 1))
+    return div(abs(x), add(abs(x), 1))
 
-def equalZero (x): # "Unfortunately", with this implementation, the precision limit is 0.000_000_01, i.e. 0.00000001 == 0
+def equalZero (x): # "Unfortunately", with this implementation, the precision limit is 0.000_000_000_000_000_01, i.e. 0.00000000000000001 == 0
     return __POSITIVE_FLOOR(sub(1, __FUNCTION(x)))
 
 def null (x):
@@ -58,9 +61,6 @@ def diffNumber (a, b):
 
 def equalNumber (a, b):
     return _not(diffNumber(a, b))
-
-def abs (x):
-    return sqrt(pow(x, 2))
 
 def tan (x):
     return div(sin(x), cos(x))
@@ -170,7 +170,7 @@ start = time.time()
 out = malang.evaluateOP(program[0], program[1])
 end = time.time()
 
-if int(out) == float (out):
+if int(out) == out:
     out = int(out)
 
 print(f"Outputted {out}\nComputed in {end -start} sec")
