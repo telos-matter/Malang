@@ -7,10 +7,10 @@ if __name__ == '__main__':
     I want later on to add possibility to compile alone
     and then to run a compiled source file'''
     
-    USAGE = """Usage: malang.py <file>"""
+    USAGE = """Usage: python3 malang.py <file>"""
 
     if len(sys.argv) < 2:
-        raise Exception(f"ERROR: Expected file path\n{USAGE}")
+        raise Exception(f"ERROR: Expected file path of the program to compile and run\n{USAGE}")
     
     from compiler import runSourceFile
     filePath = sys.argv[1]

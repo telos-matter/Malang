@@ -1,51 +1,75 @@
 from enum import Enum
 import re
-import core
-iota = core.iota
+from core import INSTRUCTION_SET, evaluateOP
+
+
+def iota (reset: bool= False) -> int:
+    """Defines constants"""
+    if reset:
+        iota.counter = -1
+    iota.counter += 1
+    return iota.counter
+iota.counter = -1
+
 
 class TokenType (Enum):
     NUMBER = iota(True) # Any number
-    OP     = iota() # Any operation of the allowed operations (+, -, *, sqrt, ln, cos..)
-    EOL    = iota() # End of a line
-    EOF    = iota() # End of the file
+    OP     = iota() # Any operation of the allowed operations (+, -, *..)
+    EOL    = iota() # End of a line (Could also be EOF)
     # OPEN_PAREN = iota()
     # CLOSE_PAREN = iota()
 
 class Token ():
-    pass
+    def __init__(self, tokenType: TokenType, lexeme: str | float, filePath: str, line_index: int, char_index: int) -> None:
+        self.type = tokenType
+        self.lexeme = lexeme
+        self.file = filePath
+        self.line = line_index +1
+        self.char = char_index +1
+    
+    def __repr__(self) -> str:
+        return '{' +f"{self.type}:{self.lexeme}" +'}'
+
 
 def parseSourceFile (content: str, filePath: str) -> list[Token]:
     '''Takes a source file and parses its content to tokens
     Does not check for structure validity,
     only checks for syntax correctness'''
     
-    # i want line / char error handling
-
-    def replace (sep: str, tokenType: TokenType, content: list[str] | list[str | Token]) -> list[str | Token] | list[Token]:
-        '''Iterates over the content and looks at every str element of it
-        and replaces
-        every occurrence of sep in that str element with a new Token of tokenType'''
-        
-        previousWasStr = False
-        _ = []
-        for section in content:
-            if type(section) == str:
-                assert not previousWasStr, f"Two consecutive Strings while tokenizing\nSection: {section}\nContent: {content}"
-                previousWasStr = True
-                section = section.split(sep)
-                for index, part in enumerate(section):
-                    if index != 0:
-                        _.append(Token(tokenType, None))
-                    _.append(part)
+    NUMBER_PERIOD = '.'
+    tokens = []
+    
+    for line_index, line in enumerate(content.splitlines()):
+        i = 0
+        while i < len(line):
+            char = line[i]
+            
+            if char in INSTRUCTION_SET:
+                tokens.append(Token(TokenType.OP, char, filePath, line_index, i))
+                i += 1
+            
+            elif char.isdigit():
+                number = char
+                j = i +1
+                while j < len(line) and (line[j].isdigit() or line[j] == NUMBER_PERIOD):
+                    number += line[j]
+                    j += 1
+                try:
+                    number = float(number)
+                except ValueError:
+                    raise Exception(f"PARSING ERROR: Couldn't parse this number: `{number}`\nFile {filePath}:{line_index +1}:{i +1}")
+                tokens.append(Token(TokenType.NUMBER, number, filePath, line_index, i))
+                i = j
+            
+            elif char.isspace():
+                i += 1
+            
             else:
-                previousWasStr = False
-                _.append(section)
-        content = _
-        return content
-
-    # Parse tokens that are not affected by whitespace or other characters like +, -..
-
-    pass
+                raise Exception(f"PARSING ERROR: Unexpected char: `{char}`\nFile {filePath}:{line_index +1}:{i +1}")
+        
+        tokens.append(Token(TokenType.EOL, None, filePath, line_index, len(line)))
+    
+    return tokens
 
 def lex (content: str, filePath: str) -> any:
     
@@ -56,4 +80,5 @@ def runSourceFile (filePath: str) -> None:
     content = None
     with open(filePath, 'r') as f:
         content = f.read()
+    print(parseSourceFile(content, filePath))
     pass
