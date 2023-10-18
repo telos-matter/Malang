@@ -13,11 +13,11 @@ iota.counter = -1
 
 
 class TokenType (Enum):
-    NUMBER = iota(True) # Any number
-    OP     = iota() # Any operation of the allowed operations (+, -, *..)
-    EOL    = iota() # End of a line (Could also be EOF)
-    # OPEN_PAREN = iota()
-    # CLOSE_PAREN = iota()
+    NUMBER      = iota(True) # Any number
+    OP          = iota()     # Any operation of the allowed operations (+, -, *..)
+    EOL         = iota()     # End of a line (Could also be an EOF)
+    OPEN_PAREN  = iota()     # Opening parenthesis `(`
+    CLOSE_PAREN = iota()     # Closing parenthesis `)`
 
 class Token ():
     def __init__(self, tokenType: TokenType, lexeme: str | float, filePath: str, line_index: int, char_index: int) -> None:
@@ -60,6 +60,14 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
                     raise Exception(f"PARSING ERROR: Couldn't parse this number: `{number}`\nFile {filePath}:{line_index +1}:{i +1}")
                 tokens.append(Token(TokenType.NUMBER, number, filePath, line_index, i))
                 i = j
+            
+            elif char == '(':
+                tokens.append(Token(TokenType.OPEN_PAREN, char, filePath, line_index, i))
+                i += 1
+            
+            elif char == ')':
+                tokens.append(Token(TokenType.CLOSE_PAREN, char, filePath, line_index, i))
+                i += 1
             
             elif char.isspace():
                 i += 1
