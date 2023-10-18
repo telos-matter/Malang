@@ -19,7 +19,6 @@ class TokenType (Enum):
     CLOSE_PAREN = iota()     # Closing parenthesis `)`
     IDENTIFIER  = iota()     # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
     ASSIGN_OP   = iota()     # The assigning operation, `=`
-    COMMENT     = iota()     # Line comment with `#`
 
 class Token ():
     def __init__(self, tokenType: TokenType, lexeme: str | float, filePath: str, line_index: int, char_index: int) -> None:
@@ -84,9 +83,9 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
                 tokens.append(Token(TokenType.ASSIGN_OP, char, filePath, line_index, i))
                 i += 1
             
-            # elif char == '#':
-            #     tokens.append(Token(TokenType.COMMENT, line[i:], filePath, line_index, i))
-            #     break
+            elif char == '#':
+                # A line comment
+                break
             
             elif char.isspace():
                 i += 1
