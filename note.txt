@@ -1,5 +1,0 @@
-Booleans here are as such:
-            True is 1 and False is 0
-
-
-Keep in mind (that in order to keep stuff mathematically correct) when using the _if statement you can't just put whatever in else, like div by zero

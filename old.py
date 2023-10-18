@@ -1,34 +1,34 @@
-import malang
+import core
 
 def add (a, b):
-    return (malang.OP_ADD, [a, b])
+    return (core.OP_ADD, [a, b])
 
 def sub (a, b):
-    return (malang.OP_SUB, [a, b])
+    return (core.OP_SUB, [a, b])
 
 def mul (a, b):
-    return (malang.OP_MUL, [a, b])
+    return (core.OP_MUL, [a, b])
 
 def div (a, b):
-    return (malang.OP_DIV, [a, b])
+    return (core.OP_DIV, [a, b])
 
 def idiv (a, b):
-    return (malang.OP_IDIV, [a, b])
+    return (core.OP_IDIV, [a, b])
 
 def pow (a, b):
-    return (malang.OP_POW, [a, b])
+    return (core.OP_POW, [a, b])
 
 def sqrt (n):
-    return (malang.OP_SQRT, [n])
+    return (core.OP_SQRT, [n])
 
 def ln (n):
-    return (malang.OP_LN, [n])
+    return (core.OP_LN, [n])
 
 def sin (n):
-    return (malang.OP_SIN, [n])
+    return (core.OP_SIN, [n])
 
 def cos (n):
-    return (malang.OP_COS, [n])
+    return (core.OP_COS, [n])
 
 ###################################
 
@@ -165,12 +165,15 @@ def odd (x):
 number = 15
 program = _if(_and(divisible(number, 5), divisible(number, 3)), 3, _if(divisible(number, 5), 2, _if(divisible(number, 3), 1, 0)))
 
+# program = max(69, 420)
+
 import time
 start = time.time()
-out = malang.evaluateOP(program[0], program[1])
+out = core.evaluateOP(program[0], program[1])
 end = time.time()
 
 if int(out) == out:
     out = int(out)
 
 print(f"Outputted {out}\nComputed in {end -start} sec")
+#########################
