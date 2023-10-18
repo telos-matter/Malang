@@ -1,5 +1,4 @@
 from enum import Enum
-import re
 from core import INSTRUCTION_SET, evaluateOP
 
 
@@ -14,10 +13,13 @@ iota.counter = -1
 
 class TokenType (Enum):
     NUMBER      = iota(True) # Any number
-    OP          = iota()     # Any operation of the allowed operations (+, -, *..)
+    OP          = iota()     # Any operation of the allowed operations from the set of instruction (+, -, *..)
     EOL         = iota()     # End of a line (Could also be an EOF)
     OPEN_PAREN  = iota()     # Opening parenthesis `(`
     CLOSE_PAREN = iota()     # Closing parenthesis `)`
+    IDENTIFIER  = iota()     # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
+    ASSIGN_OP   = iota()     # The assigning operation, `=`
+    COMMENT     = iota()     # Line comment with `#`
 
 class Token ():
     def __init__(self, tokenType: TokenType, lexeme: str | float, filePath: str, line_index: int, char_index: int) -> None:
@@ -57,7 +59,7 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
                 try:
                     number = float(number)
                 except ValueError:
-                    raise Exception(f"PARSING ERROR: Couldn't parse this number: `{number}`\nFile {filePath}:{line_index +1}:{i +1}")
+                    raise Exception(f"PARSING ERROR: Couldn't parse this number: `{number}`\nFile: {filePath}:{line_index +1}:{i +1}")
                 tokens.append(Token(TokenType.NUMBER, number, filePath, line_index, i))
                 i = j
             
@@ -69,18 +71,35 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
                 tokens.append(Token(TokenType.CLOSE_PAREN, char, filePath, line_index, i))
                 i += 1
             
+            elif char == '_' or char.isalpha():
+                identifier = char
+                j = i +1
+                while j < len(line) and (line[j].isalpha() or line[j].isdigit() or line[j] == '_'):
+                    identifier += line[j]
+                    j += 1
+                tokens.append(Token(TokenType.IDENTIFIER, identifier, filePath, line_index, i))
+                i = j
+            
+            elif char == '=':
+                tokens.append(Token(TokenType.ASSIGN_OP, char, filePath, line_index, i))
+                i += 1
+            
+            # elif char == '#':
+            #     tokens.append(Token(TokenType.COMMENT, line[i:], filePath, line_index, i))
+            #     break
+            
             elif char.isspace():
                 i += 1
             
             else:
-                raise Exception(f"PARSING ERROR: Unexpected char: `{char}`\nFile {filePath}:{line_index +1}:{i +1}")
+                raise Exception(f"PARSING ERROR: Unexpected char: `{char}`\nFile: {filePath}:{line_index +1}:{i +1}")
         
         tokens.append(Token(TokenType.EOL, None, filePath, line_index, len(line)))
     
     return tokens
 
-def lex (content: str, filePath: str) -> any:
-    
+
+def constructAST (tokens: list[Token]):
     pass
 
 def runSourceFile (filePath: str) -> None:
@@ -88,5 +107,8 @@ def runSourceFile (filePath: str) -> None:
     content = None
     with open(filePath, 'r') as f:
         content = f.read()
-    print(parseSourceFile(content, filePath))
+    tokens = parseSourceFile(content, filePath)
+    print("Tokens:\n", tokens)
+    ast = constructAST(tokens)
+    
     pass
