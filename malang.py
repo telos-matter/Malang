@@ -15,3 +15,5 @@ if __name__ == '__main__':
     from compiler import runSourceFile
     filePath = sys.argv[1]
     runSourceFile(filePath= filePath)
+
+# TODO add possibility to store compiled version as math equation

@@ -1,30 +1,20 @@
-from enum import Enum
-import core
-
-
-def iota (reset: bool= False) -> int:
-    """Defines constants"""
-    if reset:
-        iota.counter = -1
-    iota.counter += 1
-    return iota.counter
-iota.counter = -1
-
+from enum import Enum, auto
+from core import OP_SET
 
 class TokenType (Enum):
-    NUMBER      = iota(True) # Any number
-    OP          = iota()     # Any operation of the allowed operations from the set of instruction (+, -, *..)
-    EOL         = iota()     # End of a line (Could also be an EOF)
-    OPEN_PAREN  = iota()     # Opening parenthesis `(`
-    CLOSE_PAREN = iota()     # Closing parenthesis `)`
-    IDENTIFIER  = iota()     # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
-    ASSIGN_OP   = iota()     # The assigning operation, `=`
+    NUMBER      = auto()     # Any number
+    OP          = auto()     # Any operation of the allowed operations from the set of instruction (+, -, *..)
+    EOL         = auto()     # End of a line (Could also be an EOF)
+    OPEN_PAREN  = auto()     # Opening parenthesis `(`
+    CLOSE_PAREN = auto()     # Closing parenthesis `)`
+    IDENTIFIER  = auto()     # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
+    ASSIGN_OP   = auto()     # The assigning operation, `=`
 
 class Token ():
-    def __init__(self, tokenType: TokenType, lexeme: str | float, filePath: str, line_index: int, char_index: int) -> None:
+    def __init__(self, tokenType: TokenType, lexeme: str | float, file_path: str, line_index: int, char_index: int) -> None:
         self.type = tokenType
         self.lexeme = lexeme
-        self.file = filePath
+        self.file = file_path
         self.line = line_index +1
         self.char = char_index +1
     
@@ -47,7 +37,7 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
         while i < len(line):
             char = line[i]
             
-            if char in core.INSTRUCTION_SET:
+            if char in OP_SET.getSymbols():
                 tokens.append(Token(TokenType.OP, char, filePath, line_index, i))
                 i += 1
             
@@ -101,8 +91,8 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
 
 
 class NodeType (Enum):
-    VAR_ASSIGN       = iota(True) # Assigning to a variable
-    OP               = iota()     # Any operation of the allowed operations from the set of instruction (+, -, *..)
+    VAR_ASSIGN       = auto()     # Assigning to a variable
+    OP               = auto()     # Any operation of the allowed operations from the set of instruction (+, -, *..)
 
 class Node():
     def __init__(self, nodeType: NodeType, **components) -> None:
@@ -136,6 +126,29 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         else:
             assert False, f"Passed something other than Token or Node, {element}"
     
+    def appendOP (root_node: Node, op: Token, r_value: Token) -> Node:
+        '''Adds the op to the tree according to their precedence
+        and returns the new root node\n
+        The process goes as follows:\n
+        \tIf its precedence is greater than or equal to mine => It is my left-hand side\n
+        \tOtherwise => Im its new right-hand side, and its old right-hand value is my left-hand value\n
+        '''
+        assert root_node.type == NodeType.OP, f"The root_node is not an op node"
+        assert op.type == TokenType.OP, f"The op is not an op token"
+        assert producesValue(r_value), f"Passed a Token that does not produce value"
+        
+        if OP_SET.fromSymbol(root_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
+            return Node(NodeType.OP, op=op, l_value=root_node, r_value=r_value)
+        else:
+            root_r_value = root_node.components['r_value']
+            new_r_value = None
+            if type(root_r_value) == Node and root_r_value.type == NodeType.OP:
+                new_r_value = appendOP(root_r_value, op, r_value) # Repeat until its a leaf (a number, function call, variable..)
+            else:
+                new_r_value = Node(NodeType.OP, op=op, l_value=root_r_value, r_value=r_value)
+            root_node.components['r_value'] = new_r_value
+            return root_node
+    
     ast = []
     i = 0
     while i < len(tokens):
@@ -150,6 +163,8 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             buffer = [] # After the while loop, it should only contain one element, either a number token or an op node
             while i < len(tokens):
                 if tokens[i].type == TokenType.NUMBER:
+                    if len(buffer) != 0:
+                        raise Exception(f"SYNTAX ERROR: Was not expecting this number here.\n{tokens[i].location()}")
                     buffer.append(tokens[i])
                     i += 1
                 elif tokens[i].type == TokenType.OP:
@@ -162,7 +177,10 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                             assert False, f"Buffer has more than one element: {buffer}"
                     if len(tokens) <= i +1 or tokens[i +1].type != TokenType.NUMBER: # And a number after
                         raise Exception(f"SYNTAX ERROR: Expected a number after this operation `{tokens[i]}`.\n{tokens[i].location()}")
-                    buffer[0] = Node(NodeType.OP, op=tokens[i], l_value=buffer[0], r_value=tokens[i +1])
+                    if type(buffer[0]) == Node and buffer[0].type == NodeType.OP:
+                        buffer[0] = appendOP(buffer[0], tokens[i], tokens[i +1])
+                    else:
+                        buffer[0] = Node(NodeType.OP, op=tokens[i], l_value=buffer[0], r_value=tokens[i +1])
                     i += 2
                 elif tokens[i].type == TokenType.EOL: # Assignment done
                     break

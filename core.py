@@ -2,21 +2,42 @@
 It has the possible instructions
 And it is what runs and evaluates programmes'''
 
-# The allowed operations / the instructions set:
-OP_ADD  = '+'  # Addition, +
-OP_SUB  = '-'  # Subtraction, -
-OP_MUL  = '*'  # Multiplication, *
-OP_DIV  = '/'  # Division, /
-OP_IDIV = '//' # Integer division, //. For example: 5//2 = 2
-OP_POW  = '^'  # Exponentiation or raising to the power, ^
+from enum import Enum
 
-INSTRUCTION_SET = [
-    OP_ADD,
-    OP_SUB,
-    OP_MUL,
-    OP_DIV,
-    OP_IDIV,
-    OP_POW]
+class OP_SET (Enum):
+#   OP_NAME = (REPR, PRECEDENCE)
+    OP_ADD  = ('+' , 1)  # Addition
+    OP_SUB  = ('-' , 1)  # Subtraction
+    OP_MUL  = ('*' , 2)  # Multiplication
+    OP_DIV  = ('/' , 2)  # Division
+    OP_IDIV = ('//', 2)  # Integer division. For example: 5//2 = 2
+    OP_POW  = ('^' , 3)  # Exponentiation
+    
+    @property
+    def symbol (self) -> str:
+        return self.value[0]
+    
+    @property
+    def precedence (self) -> int:
+        return self.value[1]
+    
+    @classmethod
+    def fromSymbol (cls, symbol) -> 'OP_SET':
+        for op in OP_SET:
+            if op.symbol == symbol:
+                return op
+        assert False, f"Passed a none existing symbol: {symbol}"
+    
+    @classmethod
+    def getSymbols (cls) -> list[str]:
+        return [op.symbol for op in OP_SET]
+    
+    def __str__(self) -> str:
+        return self.value[0]
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 # The functions that preform the operations:
 def ADD (a: float, b: float) -> float:
@@ -55,6 +76,7 @@ And 5 + 4 * 2 for example would be:
 """
 
 def evaluateOP (op_code: str, args: list) -> float:
+    # TODO fix since i switched to enum
     # First compute the args if they need computing
     a, b = args
     if isinstance(a, tuple):
