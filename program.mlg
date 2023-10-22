@@ -1,7 +1,7 @@
 # This is a comment
 
 _foo = 3
-_foo = 1 + 2 - 3
+_foo = 1 + 2 - _foo
 _foo = 1 +2 +3 -4
 _foo = 2
 _foo = 1 + 2 * 3

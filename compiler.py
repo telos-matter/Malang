@@ -99,11 +99,14 @@ class Node():
         ''' The components that each nodeType may have
         VAR_ASSIGN:
             var: an identifier token representing the variable getting assigned to
-            value: either a number token or an op node
+            value: a value element
         OP:
             op: the op token
-            l_value: a number token or an op node representing the left value of the operation
-            r_value: a number token or an op node representing the right value of the operation
+            l_value: a value element representing the left value of the operation
+            r_value: a value element representing the right value of the operation
+        \n
+        A value element means a Token or a Node that can return or is a value, it
+        can be: Token.number, Token.identifier or Node.op
         '''
         self.type = nodeType
         self.components = components
@@ -118,9 +121,9 @@ def constructAST (tokens: list[Token]) -> list[Node]:
     only checks for validity of the structure / syntax'''
     
     def producesValue (element: Token | Node) -> bool:
-        '''Checks if the element is a value, or if it, when computed, returns a value'''
+        '''Checks if the element is a value element'''
         if type(element) == Token:
-            return element.type in [TokenType.NUMBER]
+            return element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]
         elif type(element) == Node:
             return element.type in [NodeType.OP]
         else:
@@ -135,7 +138,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         '''
         assert root_node.type == NodeType.OP, f"The root_node is not an op node"
         assert op.type == TokenType.OP, f"The op is not an op token"
-        assert producesValue(r_value), f"Passed a Token that does not produce value"
+        assert type(r_value) == Token and producesValue(r_value), f"Passed a Token that does not produce value"
         
         if OP_SET.fromSymbol(root_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
             return Node(NodeType.OP, op=op, l_value=root_node, r_value=r_value)
@@ -155,8 +158,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         token = tokens[i]
         tokenType = token.type
         
-        if tokenType == TokenType.IDENTIFIER:
-            # Can only be var_assign
+        if tokenType == TokenType.IDENTIFIER: # var_assign
             if len(tokens) <= i +1 or tokens[i +1].type != TokenType.ASSIGN_OP:
                 raise Exception(f"SYNTAX ERROR: Expected the assign operation `=` after this variable `{token}`.\nVariables can't be declared without assigning a value to then.\n{token.location()}")
             i += 2
@@ -167,22 +169,27 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                         raise Exception(f"SYNTAX ERROR: Was not expecting this number here.\n{tokens[i].location()}")
                     buffer.append(tokens[i])
                     i += 1
+                elif tokens[i].type == TokenType.IDENTIFIER:
+                    if len(buffer) != 0:
+                        raise Exception(f"SYNTAX ERROR: Was not expecting this identifier here.\n{tokens[i].location()}")
+                    buffer.append(tokens[i])
+                    i += 1
                 elif tokens[i].type == TokenType.OP:
-                    if len(buffer) != 1 or not producesValue(buffer[0]): # Needs a value before
+                    if len(buffer) != 1 or not producesValue(buffer[0]): # Should have already found a value before
                         if len(buffer) == 0:
                             raise Exception(f"SYNTAX ERROR: This operation `{tokens[i]}` requires a left-hand side value.\n{tokens[i].location()}")
                         elif len(buffer) == 1:
                             raise Exception(f"SYNTAX ERROR: Can't use this `{buffer[0]}` with this operation `{tokens[i]}`.\n{tokens[i].location()}")
                         else:
                             assert False, f"Buffer has more than one element: {buffer}"
-                    if len(tokens) <= i +1 or tokens[i +1].type != TokenType.NUMBER: # And a number after
-                        raise Exception(f"SYNTAX ERROR: Expected a number after this operation `{tokens[i]}`.\n{tokens[i].location()}")
-                    if type(buffer[0]) == Node and buffer[0].type == NodeType.OP:
+                    if len(tokens) <= i +1 or not producesValue(tokens[i +1]): # The token after should be a value
+                        raise Exception(f"SYNTAX ERROR: Expected a number or an identifier after this operation `{tokens[i]}`.\n{tokens[i].location()}")
+                    if type(buffer[0]) == Node and buffer[0].type == NodeType.OP: # If an op is the previous value then append
                         buffer[0] = appendOP(buffer[0], tokens[i], tokens[i +1])
-                    else:
+                    else: # Otherwise create one
                         buffer[0] = Node(NodeType.OP, op=tokens[i], l_value=buffer[0], r_value=tokens[i +1])
                     i += 2
-                elif tokens[i].type == TokenType.EOL: # Assignment done
+                elif tokens[i].type == TokenType.EOL: # Assignment is done
                     break
                 else:
                     raise Exception(f"SYNTAX ERROR: Was not expecting this `{tokens[i]}` in this variable assignment `{token}`.\n{tokens[i].location()}")
@@ -195,7 +202,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                     assert False, f"Buffer contains more than 1 element: {buffer}"
             ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=buffer[0]))
         
-        elif tokenType == TokenType.EOL:
+        elif tokenType == TokenType.EOL: # Next line
             i += 1
         
         else:
