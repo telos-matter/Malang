@@ -38,8 +38,10 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
             char = line[i]
             
             if char in OP_SET.getSymbols():
+                if char == OP_SET.OP_IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.OP_IDIV.symbol[1]:
+                    char = line[i : i +2]
                 tokens.append(Token(TokenType.OP, char, filePath, line_index, i))
-                i += 1
+                i += len(char)
             
             elif char.isdigit():
                 number = char
