@@ -1,14 +1,14 @@
 # This is a comment
 
-# _foo = 3
-# _foo = 1 +2 +3 -4
-# _foo = 2
-# _foo = 1 + 2 * 3
-# _foo = 1 * 2 * 3
-# _foo = 1 ^ 2 * 3
-# _foo = 1 + 2*3/4^5*6 +7/8
+_foo = 3
+_foo = 1 +2 +3 -4
+_foo = 2
+_foo = 1 + 2 * 3
+_foo = 1 * 2 * 3
+_foo = 1 ^ 2 * 3
+_foo = 1 + 2*3/4^5*6 +7/8
 
-# _foo = 1 + 2 - _foo
+_foo = 1 + 2 - _foo
 
 _foo = (1 + 2) * 3
 _foo = 0 + (1 + 2) * 3
@@ -24,6 +24,13 @@ _foo = (((
        )
            ))
            )) +1
-
-
 _foo = 5 // 2
+
+# testing error reporting
+# +3.2.1 djfhsdj hfdjs hf
+# _foo = 0 + (1 + 2) * -3-+_foo
+# before? test
+# _foo = 1 (()
+# _foo =
+# _foo
+#  12 sss
