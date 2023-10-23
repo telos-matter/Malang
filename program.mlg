@@ -1,4 +1,5 @@
 
-res = 0 - 5 
-foo = 4.5
-res = foo + 5 + res
+foo = 2
+res = foo
+# foo = 3
+# res = res + foo

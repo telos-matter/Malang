@@ -3,15 +3,16 @@ It has the possible instructions
 And it is what runs and evaluates programmes'''
 
 from enum import Enum
+from typing import Callable
 
 class OP_SET (Enum):
-#   OP_NAME = (REPR, PRECEDENCE)
-    OP_ADD  = ('+' , 1)  # Addition
-    OP_SUB  = ('-' , 1)  # Subtraction
-    OP_MUL  = ('*' , 2)  # Multiplication
-    OP_DIV  = ('/' , 2)  # Division
-    OP_IDIV = ('//', 2)  # Integer division. For example: 5//2 = 2
-    OP_POW  = ('^' , 3)  # Exponentiation
+#   OP   = (REPR, PRECEDENCE, FUNCTION)
+    ADD  = ( '+',          1, lambda a, b: a + b)  # Addition
+    SUB  = ( '-',          1, lambda a, b: a - b)  # Subtraction
+    MUL  = ( '*',          2, lambda a, b: a * b)  # Multiplication
+    DIV  = ( '/',          2, lambda a, b: a / b)  # Division
+    IDIV = ('//',          2, lambda a, b: a // b) # Integer division. For example: 5//2 = 2
+    POW  = ( '^',          3, lambda a, b: a ** b) # Exponentiation
     
     @property
     def symbol (self) -> str:
@@ -20,6 +21,10 @@ class OP_SET (Enum):
     @property
     def precedence (self) -> int:
         return self.value[1]
+    
+    @property
+    def function (self) -> Callable[[float | int, float | int], float | int]:
+        return self.value[2]
     
     @classmethod
     def fromSymbol (cls, symbol) -> 'OP_SET':
@@ -39,77 +44,40 @@ class OP_SET (Enum):
         return self.__str__()
 
 
-# The functions that preform the operations:
-def ADD (a: float, b: float) -> float:
-    return a + b
-
-def SUB (a: float, b: float) -> float:
-    return a - b
-
-def MUL (a: float, b: float) -> float:
-    return a * b
-
-def DIV (a: float, b: float) -> float:
-    return a / b
-
-def IDIV (a: float, b: float) -> float:
-    return a // b
-
-def POW (a: float, b: float) -> float:
-    return a ** b
-
-
-# If you are wondering, because i was, if the change is global (to all future python instances), no it is not, i tested it
-import sys
-sys.setrecursionlimit(10_000)
-
 class Instruction ():
-    def __init__(self, temp_a, temp_b) -> None:
-        pass
-    #def __init__(self, op: OP_SET, a: 'float' | 'int' | 'Instruction', b: 'float' | 'int' | 'Instruction') -> None:
-        pass
-    pass
-# A program is a single instruction
-"""
-A program is always a TUPLE of two things:
-    1. The op_code
-    2. A LIST containing the 2 args needed by that operation
-then of course an individual arg can be another program, i.e. another tuple
-
-For example 5 + 4 would be:
-    ('+', [5, 4])
-And 5 + 4 * 2 for example would be:
-    ('+', [5, ('*', [4, 2])])
-"""
-
-def evaluateOP (op_code: str, args: list) -> float:
-    # TODO fix since i switched to enum
-    # First compute the args if they need computing
-    a, b = args
-    if isinstance(a, tuple):
-        a = evaluateOP(a[0], a[1])
-    if isinstance(b, tuple):
-        b = evaluateOP(b[0], b[1])
+    '''An entire program is a single instruction, that instruction
+    it self may of course contain other instructions'''
     
+    def __init__(self, op: OP_SET, a, b) -> None:
+        '''`op`: the operation to preform\n
+        `a`: the first argument as a number or another Instruction\n
+        `b`: the second argument as a number or another Instruction\n'''
+        self.op = op
+        self.a = a
+        self.b = b
     
-    # Then preform the op
-    if op_code == OP_ADD: 
-        return ADD(a, b)
+    def evaluate(self) -> tuple[float | int, int]:
+        counter = 1
+        if type(self.a) == Instruction:
+            self.a, _ = self.a.evaluate()
+            counter += _
+        if type(self.b) == Instruction:
+            self.b, _ = self.b.evaluate()
+            counter += _
+        
+        return (self.op.function(self.a, self.b), counter)
     
-    elif op_code == OP_SUB:
-        return SUB(a, b)
-    
-    elif op_code == OP_MUL:
-        return MUL(a, b)
-    
-    elif op_code == OP_DIV:
-        return DIV(a, b)
-    
-    elif op_code == OP_IDIV:
-        return IDIV(a, b)
-    
-    elif op_code == OP_POW:
-        return POW(a, b)
-    
-    else:
-        raise Exception(f"Unknown OP: `{op_code}`, with args: `{args}`")
+    def runProgram(self) -> None: 
+        import sys
+        sys.setrecursionlimit(10_000) # If you are wondering, because I was, if the change is global (to all future python instances), no it is not, I tested it
+        
+        import time
+        
+        start = time.time()
+        result, counter = self.evaluate() # The instructions are close together so that it misses no milliseconds                                                                                                                                                                                               # A joke obviously
+        end = time.time()
+        
+        if int(result) == result:
+            result = int(result)
+        
+        print(f"The result is of the program is: {result}\nIt was computed in {end -start} seconds\nIt preformed {counter} instructions")

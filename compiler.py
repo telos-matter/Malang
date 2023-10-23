@@ -60,7 +60,7 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
             char = line[i]
             
             if char in OP_SET.getSymbols():
-                if char == OP_SET.OP_IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.OP_IDIV.symbol[1]:
+                if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.OP_IDIV.symbol[1]:
                     char = line[i : i +2]
                 tokens.append(Token(TokenType.OP, char,line, len(char), filePath, line_index, i))
                 i += len(char)
@@ -389,7 +389,36 @@ def validateAST (ast: list[Node]) -> None:
 def constructProgram (ast: list[Node]) -> Instruction:
     '''Constructs the program from a valid AST'''
     
-    pass
+    def setValueInstruction(value: float | int) -> Instruction:
+        '''Creates an instruction that sets a value'''
+        return Instruction(OP_SET.ADD, value, 0)
+    
+    return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, '', 0, None, 0, 0) # TODO maybe later on appoint it to the start line either of the function or the file
+    vars_state = {return_var: setValueInstruction(0)}
+    
+    for node in ast:
+        if node.type == NodeType.VAR_ASSIGN:
+            var = node.components['var']
+            value = node.components['value']
+            if type(value) == Token:
+                if value.type == TokenType.NUMBER: # foo = 1
+                    vars_state[var] = setValueInstruction(value.lexeme)
+                elif value.type == TokenType.IDENTIFIER: # res = foo
+                    vars_state[var] = vars_state[value]
+                else:
+                    assert False, "Forgot to update this"
+            
+            elif type(value) == Node:
+                assert False, "Not yet impl"
+                pass
+
+            else:
+                assert False, "??"
+            
+        else:
+            assert False, f"Something other than Node.VAR_ASSIGN"
+    
+    return vars_state[return_var]
 
 
 def runSourceFile (filePath: str) -> None:
@@ -408,3 +437,5 @@ def runSourceFile (filePath: str) -> None:
     print('AST is valid')
     program = constructProgram(ast)
     print("Program:", program, sep='\n')
+    
+    program.runProgram()
