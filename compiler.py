@@ -76,7 +76,7 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
                 i += 1
             
             elif char == '#':
-                # A line comment
+                # A line comment, go to next line
                 break
             
             elif char.isspace():
@@ -91,22 +91,25 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
 
 
 class NodeType (Enum):
-    VAR_ASSIGN       = auto()     # Assigning to a variable
-    OP               = auto()     # Any operation of the allowed operations from the set of instruction (+, -, *..)
+    VAR_ASSIGN  = auto() # Assigning to a variable
+    OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
+    ORDER_PAREN = auto() # Order parenthesis. They can only contain a value element
 
 class Node():
     def __init__(self, nodeType: NodeType, **components) -> None:
-        ''' The components that each nodeType may have
-        VAR_ASSIGN:
+        ''' The components that each nodeType has:\n
+        `VAR_ASSIGN`:
             var: an identifier token representing the variable getting assigned to
-            value: a value element
-        OP:
-            op: the op token
+            value: a value element representing the assigned value
+        `OP`:
+            op: the op token representing the operation being performed
             l_value: a value element representing the left value of the operation
             r_value: a value element representing the right value of the operation
+        `ORDER_PAREN`:
+            value: a value element representing their content
         \n
-        A value element means a Token or a Node that can return or is a value, it
-        can be: Token.number, Token.identifier or Node.op
+        A value element means a Token or a Node that can return or is a value, one
+        fo these: Token.NUMBER, Token.IDENTIFIER, Node.OP or Node.ORDER_PAREN
         '''
         self.type = nodeType
         self.components = components
@@ -125,20 +128,21 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         if type(element) == Token:
             return element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]
         elif type(element) == Node:
-            return element.type in [NodeType.OP]
+            return element.type in [NodeType.OP, NodeType.ORDER_PAREN]
         else:
             assert False, f"Passed something other than Token or Node, {element}"
     
-    def appendOP (root_node: Node, op: Token, r_value: Token) -> Node:
-        '''Adds the op to the tree according to their precedence
+    def appendOP (root_node: Node, op: Token, r_value: Token | Node) -> Node:
+        '''Adds the `op` to the tree according to the precedence of its content
         and returns the new root node\n
-        The process goes as follows:\n
-        \tIf its precedence is greater than or equal to mine => It is my left-hand side\n
-        \tOtherwise => Im its new right-hand side, and its old right-hand value is my left-hand value\n
+        The process of appending goes as follows:\n
+        \tIf the root_nodes' precedence is greater than or equal to mine => It is my l_value\n
+        \tOtherwise => Im its new r_value, and its old r_value is my l_value (treating
+        the r_value in a recursive fashion)\n
         '''
-        assert root_node.type == NodeType.OP, f"The root_node is not an op node"
+        assert root_node.type == NodeType.OP, f"The root_node is not a Node.OP"
         assert op.type == TokenType.OP, f"The op is not an op token"
-        assert type(r_value) == Token and producesValue(r_value), f"Passed a Token that does not produce value"
+        assert producesValue(r_value), f"Passed an r_value that does not produce value"
         
         if OP_SET.fromSymbol(root_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
             return Node(NodeType.OP, op=op, l_value=root_node, r_value=r_value)
@@ -146,11 +150,114 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             root_r_value = root_node.components['r_value']
             new_r_value = None
             if type(root_r_value) == Node and root_r_value.type == NodeType.OP:
-                new_r_value = appendOP(root_r_value, op, r_value) # Repeat until its a leaf (a number, function call, variable..)
+                new_r_value = appendOP(root_r_value, op, r_value)
             else:
                 new_r_value = Node(NodeType.OP, op=op, l_value=root_r_value, r_value=r_value)
             root_node.components['r_value'] = new_r_value
             return root_node
+    
+    def findToken (tokens: list[Token], tokenType: TokenType, search_from: int) -> int | None:
+        '''Looks for a Token starting from `search_from`'''
+        while search_from < len(tokens):
+            if tokens[search_from].type == tokenType:
+                return search_from
+            search_from += 1
+        return None
+    
+    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int) -> int | None:
+        '''Returns the index of the enclosing token starting from `search_from`
+        This handles nested tokens such as ((())) for example'''
+        depth = 1
+        while search_from < len(tokens):
+            tokenType = tokens[search_from].type
+            if tokenType == opening_tokenType:
+                depth += 1
+            elif tokenType == enclosing_tokenType:
+                depth -= 1
+            if depth == 0:
+                return search_from
+            search_from += 1
+        return None
+    
+    def processValueExpression (tokens: list[Token], parent_token: Token) -> Node | Token:
+        '''Called to process a value expression and return a value element representing it\n
+        `tokens` is a sub list of the actual tokens and
+        would have the content of whatever is between parenthesis,
+        function parameters or a variable assignment for example\n
+        `parent_token` is the token that wants to process this value expression\n
+        It does not care for EOLs and just process/parses whatever
+        was given to it as long as it can be in a single expression'''
+        buffer = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            tokenType = token.type
+            
+            if tokenType == TokenType.NUMBER:
+                if len(buffer) != 0:
+                    raise Exception(f"SYNTAX ERROR: Was not expecting a number here.\n{token.location()}")
+                buffer.append(token)
+                i += 1
+            
+            elif tokenType == TokenType.IDENTIFIER:
+                if len(buffer) != 0:
+                    raise Exception(f"SYNTAX ERROR: Was not expecting an identifier here.\n{token.location()}")
+                buffer.append(token)
+                i += 1
+            
+            elif tokenType == TokenType.OPEN_PAREN:
+                if len(buffer) != 0:
+                    raise Exception(f"SYNTAX ERROR: Was not expecting an open parenthesis here.\n{token.location()}")
+                close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1)
+                if close_paren == None:
+                    raise Exception(f"SYNTAX ERROR: The closing parenthesis is missing.\n{token.location()}")
+                value = processValueExpression(tokens[i +1 : close_paren], token)
+                buffer.append(Node(NodeType.ORDER_PAREN, value=value))
+                i = close_paren +1
+            
+            elif tokenType == TokenType.OP:
+                if len(buffer) != 1 or not producesValue(buffer[0]): # Should have already found a value before
+                    if len(buffer) == 0:
+                        raise Exception(f"SYNTAX ERROR: This operation `{token}` requires a left-hand side value.\n{token.location()}")
+                    elif len(buffer) == 1:
+                        assert False, f"Buffer has a none value element: {buffer[0]}"
+                        # raise Exception(f"SYNTAX ERROR: Can't use this `{buffer[0]}` with this operation `{tokens[i]}`.\n{tokens[i].location()}")
+                    else:
+                        assert False, f"Buffer has more than one element: {buffer}"
+                if len(tokens) <= i +1:
+                    raise Exception(f"SYNTAX ERROR: Expected something after this operation `{token}`.\n{token.location()}")
+                r_value = None
+                if tokens[i +1].type in [TokenType.NUMBER, TokenType.IDENTIFIER]: # TODO separate once we have func_call
+                    r_value = tokens[i +1]
+                    i += 2
+                elif tokens[i +1].type == TokenType.OPEN_PAREN:
+                    close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +2)
+                    if close_paren == None:
+                        raise Exception(f"SYNTAX ERROR: The closing parenthesis is missing.\n{token.location()}")
+                    value = processValueExpression(tokens[i +2 : close_paren], tokens[i +1])
+                    r_value = Node(NodeType.ORDER_PAREN, value=value)
+                    i = close_paren +1
+                else:
+                    raise Exception(f"SYNTAX ERROR: Was not expecting this after this operation `{token}`.\n{token.location()}")
+                if type(buffer[0]) == Node and buffer[0].type == NodeType.OP: # If an op is the previous value then append
+                    buffer[0] = appendOP(buffer[0], token, r_value)
+                else: # Otherwise create one
+                    buffer[0] = Node(NodeType.OP, op=token, l_value=buffer[0], r_value=r_value)
+            
+            elif tokenType == TokenType.EOL:
+                i += 1
+            
+            else:
+                raise Exception(f"SYNTAX ERROR: Was not expecting this `{tokens[i]}` here.\n{tokens[i].location()}")
+        if len(buffer) != 1 or not producesValue(buffer[0]):
+            if len(buffer) == 0:
+                raise Exception(f"SYNTAX ERROR: Expected something after this `{parent_token}`.\n{parent_token.location()}")
+            elif len(buffer) == 1:
+                assert False, f"Buffer has a none value element: {buffer[0]}"
+                # raise Exception(f"SYNTAX ERROR: Can't assign this `{buffer[0]}` to this variable `{token}`.\n{token.location()}")
+            else:
+                assert False, f"Buffer contains more than 1 element: {buffer}"
+        return buffer[0]
     
     ast = []
     i = 0
@@ -162,51 +269,24 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             if len(tokens) <= i +1 or tokens[i +1].type != TokenType.ASSIGN_OP:
                 raise Exception(f"SYNTAX ERROR: Expected the assign operation `=` after this variable `{token}`.\nVariables can't be declared without assigning a value to then.\n{token.location()}")
             i += 2
-            buffer = [] # After the while loop, it should only contain one element, either a number token or an op node
-            while i < len(tokens):
-                if tokens[i].type == TokenType.NUMBER:
-                    if len(buffer) != 0:
-                        raise Exception(f"SYNTAX ERROR: Was not expecting this number here.\n{tokens[i].location()}")
-                    buffer.append(tokens[i])
-                    i += 1
-                elif tokens[i].type == TokenType.IDENTIFIER:
-                    if len(buffer) != 0:
-                        raise Exception(f"SYNTAX ERROR: Was not expecting this identifier here.\n{tokens[i].location()}")
-                    buffer.append(tokens[i])
-                    i += 1
-                elif tokens[i].type == TokenType.OP:
-                    if len(buffer) != 1 or not producesValue(buffer[0]): # Should have already found a value before
-                        if len(buffer) == 0:
-                            raise Exception(f"SYNTAX ERROR: This operation `{tokens[i]}` requires a left-hand side value.\n{tokens[i].location()}")
-                        elif len(buffer) == 1:
-                            raise Exception(f"SYNTAX ERROR: Can't use this `{buffer[0]}` with this operation `{tokens[i]}`.\n{tokens[i].location()}")
-                        else:
-                            assert False, f"Buffer has more than one element: {buffer}"
-                    if len(tokens) <= i +1 or not producesValue(tokens[i +1]): # The token after should be a value
-                        raise Exception(f"SYNTAX ERROR: Expected a number or an identifier after this operation `{tokens[i]}`.\n{tokens[i].location()}")
-                    if type(buffer[0]) == Node and buffer[0].type == NodeType.OP: # If an op is the previous value then append
-                        buffer[0] = appendOP(buffer[0], tokens[i], tokens[i +1])
-                    else: # Otherwise create one
-                        buffer[0] = Node(NodeType.OP, op=tokens[i], l_value=buffer[0], r_value=tokens[i +1])
-                    i += 2
-                elif tokens[i].type == TokenType.EOL: # Assignment is done
-                    break
-                else:
-                    raise Exception(f"SYNTAX ERROR: Was not expecting this `{tokens[i]}` in this variable assignment `{token}`.\n{tokens[i].location()}")
-            if len(buffer) != 1 or not producesValue(buffer[0]):
-                if len(buffer) == 0:
-                    raise Exception(f"SYNTAX ERROR: Something must be assigned to this variable `{token}`.\n{token.location()}")
-                elif len(buffer) == 1:
-                    raise Exception(f"SYNTAX ERROR: Can't assign this `{buffer[0]}` to this variable `{token}`.\n{token.location()}")
-                else:
-                    assert False, f"Buffer contains more than 1 element: {buffer}"
-            ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=buffer[0]))
+            eol = findToken(tokens, TokenType.EOL, i)
+            assert eol != None, f"EOL was not appended to the line of this token: {token}\n{token.location()}"
+            open_paren = findToken(tokens[: eol], TokenType.OPEN_PAREN, i)
+            if open_paren != None: # If there is a paren, then look for the last EOL
+                end_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, open_paren +1)
+                if end_paren == None:
+                    raise Exception(f"SYNTAX ERROR: The closing parenthesis is missing.\n{tokens[open_paren].location()}")
+                eol = findToken(tokens, TokenType.EOL, end_paren +1)
+                assert eol != None, f"EOL was not appended to the line of this token: {token}\n{token.location()}"
+            ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=processValueExpression(tokens[i : eol], tokens[i -1])))
+            i = eol +1
         
-        elif tokenType == TokenType.EOL: # Next line
+        elif tokenType == TokenType.EOL: # Skip
             i += 1
+        # TODO add support in processValue for open paren
         
         else:
-            raise Exception(f"Was not expecting this `{token.lexeme}`!\n{token.location()}")
+            raise Exception(f"This `{token}` shouldn't be here here!\n{token.location()}")
     
     return ast
 
