@@ -4,3 +4,5 @@ Precedence order is PEMDAS (), ^, */ //, +-
 
 Parenthesis can span lines
 Var assign ends with new line unless parenthensis
+
+Vars are case sensitive 

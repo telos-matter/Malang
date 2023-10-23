@@ -63,6 +63,13 @@ def POW (a: float, b: float) -> float:
 import sys
 sys.setrecursionlimit(10_000)
 
+class Instruction ():
+    def __init__(self, temp_a, temp_b) -> None:
+        pass
+    #def __init__(self, op: OP_SET, a: 'float' | 'int' | 'Instruction', b: 'float' | 'int' | 'Instruction') -> None:
+        pass
+    pass
+# A program is a single instruction
 """
 A program is always a TUPLE of two things:
     1. The op_code

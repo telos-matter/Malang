@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from core import OP_SET
+from core import OP_SET, Instruction
 
 class TokenType (Enum):
     NUMBER      = auto()     # Any number
@@ -28,6 +28,15 @@ class Token ():
     
     def pointOut(self) -> str:
         return f"{self.line[:self.char_number -1]}>>>{self.line[self.char_number -1 : self.char_number -1 +self.span]}<<<{self.line[self.char_number -1 +self.span:]}"
+    
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, self.__class__):
+            return self.type == other.type and self.lexeme == other.lexeme
+        else:
+            return False
+    
+    def __hash__(self) -> int:
+        return hash((self.type, self.lexeme))
     
     def __repr__(self) -> str:
         return str(self.lexeme)
@@ -313,8 +322,79 @@ def constructAST (tokens: list[Token]) -> list[Node]:
     
     return ast
 
+
+RETURN_VAR_NAME = 'res'
+
+def validateAST (ast: list[Node]) -> None:
+    '''Checks for the validity of the code; referencing
+    a none existing variable and so on'''
+    
+    def invalidCode (message: str, token: Token) -> None:
+        '''Raises an invalid code exception'''
+        message = "INVALID CODE: " +message
+        if token is not None:
+            message += f"\n{token.pointOut()}\n{token.location()}"
+        raise Exception(message)
+    
+    def getUsedVars (node: Node) -> set[Token]:
+        '''Returns a list of Token.IDENTIFIER representing
+        the variables USED BY this node. And NOT the
+        variable it self in case of Node.VAR_ASSIGN for example'''
+        
+        if node.type == NodeType.VAR_ASSIGN:
+            value = node.components['value']
+            if type(value) == Token and value.type == TokenType.IDENTIFIER:
+                return {value}
+            elif type(value) == Node and value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
+                return getUsedVars(value)
+        
+        elif node.type == NodeType.OP:
+            vars = set()
+            l_value = node.components['l_value']
+            if type(l_value) == Token and l_value.type == TokenType.IDENTIFIER:
+                vars.add(l_value)
+            elif type(l_value) == Node and l_value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
+                vars |= getUsedVars(l_value)
+            r_value = node.components['r_value']
+            if type(r_value) == Token and r_value.type == TokenType.IDENTIFIER:
+                vars.add(r_value)
+            elif type(r_value) == Node and r_value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
+                vars |= getUsedVars(r_value)
+            return vars
+        
+        elif node.type == NodeType.ORDER_PAREN:
+            value = node.components['value']
+            if type(value) == Token and value.type == TokenType.IDENTIFIER:
+                return {value}
+            elif type(value) == Node and value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
+                return getUsedVars(value)
+        
+        else:
+            assert False, f"You forgot to update this"
+        return set()
+    
+    vars = {Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, '', 0, None, 0, 0)} # TODO maybe later on appoint it to the start line either of the function or the file
+    for node in ast:
+        if node.type == NodeType.VAR_ASSIGN:
+            used_vars = getUsedVars(node)
+            if not used_vars.issubset(vars):
+                var = next(iter(used_vars.difference(vars)))
+                invalidCode(f"This variable `{var}` was referenced before assignment", var)
+            vars.add(node.components['var'])
+        
+        else:
+            assert False, f"Something other than Node.VAR_ASSIGN"
+
+
+def constructProgram (ast: list[Node]) -> Instruction:
+    '''Constructs the program from a valid AST'''
+    
+    pass
+
+
 def runSourceFile (filePath: str) -> None:
     '''Compiles and runs a source file'''
+    
     content = None
     with open(filePath, 'r') as f:
         content = f.read()
@@ -324,5 +404,7 @@ def runSourceFile (filePath: str) -> None:
     print("AST:\n")
     for node in ast:
         print("-", node)
-    
-    pass
+    validateAST(ast)
+    print('AST is valid')
+    program = constructProgram(ast)
+    print("Program:", program, sep='\n')
