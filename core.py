@@ -82,7 +82,13 @@ class Instruction ():
         result, counter = self.evaluate() # The instructions are close together so that it misses no milliseconds                                                                                                                                                                                               # A joke obviously
         end = time.time()
         
-        if int(result) == result:
+        if result == int(result):
             result = int(result)
         
-        print(f"The result is of the program is: {result}\nIt was computed in {end -start} seconds\nIt preformed {counter} instructions")
+        print(f"{result}\nThe result is of the program is: {result}\nIt was computed in {end -start} seconds\nIt preformed {counter} instructions")
+    
+    def __str__(self) -> str:
+        return f"({self.a} {self.op} {self.b})"
+    
+    def __repr__(self) -> str:
+        return self.__str__()

@@ -12,9 +12,10 @@ class TokenType (Enum):
     ASSIGN_OP   = auto()     # The assigning operation, `=`
 
 class Token ():
-    def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int) -> None:
+    def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
         '''`line`: the line in which this Token exists\n
-        `span`: the length of the Token in the line
+        `span`: the length of the Token in the line\n
+        `synthesized`: refers to whether the token was created by the compiler, for example -foo => (-1 * foo)
         '''
         self.type = tokenType
         self.lexeme = lexeme
@@ -23,12 +24,20 @@ class Token ():
         self.file = file_path
         self.line_number = line_index +1
         self.char_number = char_index +1
+        self.synthesized = synthesized
     
     def location(self) -> str:
         return f"File `{self.file}`, line: {self.line_number}, column: {self.char_number}"
     
     def pointOut(self) -> str:
         return f"{self.line[:self.char_number -1]}>>>{self.line[self.char_number -1 : self.char_number -1 +self.span]}<<<{self.line[self.char_number -1 +self.span:]}"
+    
+    def getSynthesizedInfo(self) -> tuple:
+        '''Returns the info to be passed
+        to the constructor for Tokens
+        that are synthesized because of
+        this `self` token'''
+        return (self.line, 0, self.file, self.line_number -1, self.char_number -1, True)
     
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
@@ -61,7 +70,7 @@ def parseSourceFile (content: str, filePath: str) -> list[Token]:
             char = line[i]
             
             if char in OP_SET.getSymbols():
-                if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.OP_IDIV.symbol[1]:
+                if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.IDIV.symbol[1]:
                     char = line[i : i +2]
                 tokens.append(Token(TokenType.OP, char,line, len(char), filePath, line_index, i))
                 i += len(char)
@@ -265,12 +274,29 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                     r_value = tokens[i +1]
                     i += 2
                 elif tokens[i +1].type == TokenType.OPEN_PAREN:
+                    # TODO call self
                     close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +2)
                     if close_paren == None:
                         syntaxError(f"The closing parenthesis for this one is missing!", tokens[i +1])
                     value = processValueExpression(tokens[i +2 : close_paren], tokens[i +1])
                     r_value = Node(NodeType.ORDER_PAREN, value=value)
                     i = close_paren +1
+                elif tokens[i +1].type == TokenType.OP and tokens[i +1].lexeme == OP_SET.SUB.symbol:
+                    if len(tokens) <= i +2:
+                        syntaxError(f"Expected a value to negate here", tokens[i +1])
+                    if tokens[i +2].type == TokenType.NUMBER:
+                        tokens[i +2].lexeme *= -1
+                        r_value = tokens[i +2]
+                        i += 3
+                    elif tokens[i +2].type == TokenType.IDENTIFIER:
+                        negation = tokens[i +1]
+                        negation_op = Token(TokenType.OP, OP_SET.MUL.symbol, *negation.getSynthesizedInfo())
+                        negation_l_value = Token(TokenType.NUMBER, -1, *negation.getSynthesizedInfo())
+                        value = Node(NodeType.OP, op=negation_op, l_value=negation_l_value, r_value=tokens[i +2])
+                        r_value = Node(NodeType.ORDER_PAREN, value=value)
+                        i += 3
+                    else:
+                        syntaxError(f"Can't negate something other than a value", tokens[i +2])
                 else:
                     syntaxError(f"This operation `{token}` requires a value after it, not this `{tokens[i +1]}`", tokens[i +1])
                 if type(buffer[0]) == Node and buffer[0].type == NodeType.OP: # If an op is the previous value then append
@@ -341,6 +367,7 @@ def validateAST (ast: list[Node]) -> None:
         '''Returns a list of Token.IDENTIFIER representing
         the variables USED BY this node. And NOT the
         variable it self in case of Node.VAR_ASSIGN for example'''
+        # TODO recheck this to optimize
         
         if node.type == NodeType.VAR_ASSIGN:
             value = node.components['value']
@@ -442,32 +469,43 @@ def constructProgram (ast: list[Node]) -> Instruction:
     for node in ast:
         if node.type == NodeType.VAR_ASSIGN:
             var = node.components['var']
-            value = getInstruction(node.components['value'], vars_state)
-            if isinstance(value, Number):
-                value = setValueInstruction(value)
-            vars_state[var] = value
+            value = node.components['value']
+            vars_state[var] = getInstruction(value, vars_state)
             
         else:
             assert False, f"Something other than Node.VAR_ASSIGN"
     
-    return vars_state[return_var]
+    return_value = vars_state[return_var]
+    if isinstance(return_value, Number):
+        return_value = setValueInstruction(return_value)
+    return return_value
 
 
 def runSourceFile (filePath: str) -> None:
     '''Compiles and runs a source file'''
     
+    DEBUG = True
+    
     content = None
     with open(filePath, 'r') as f:
         content = f.read()
+    
     tokens = parseSourceFile(content, filePath)
-    print("Tokens:\n", tokens)
+    if DEBUG:
+        print("Tokens:\n", tokens)
+    
     ast = constructAST(tokens)
-    print("AST:\n")
-    for node in ast:
-        print("-", node)
+    if DEBUG:
+        print("AST:\n")
+        for node in ast:
+            print("-", node)
+    
     validateAST(ast)
-    print('AST is valid')
+    if DEBUG:
+        print('AST is valid')
+    
     program = constructProgram(ast)
-    print("Program:", program, sep='\n')
+    if DEBUG:
+        print("Program:", program, sep='\n')
     
     program.runProgram()
