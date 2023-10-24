@@ -1,5 +1,3 @@
-Fuck y'all, no support for negative numbers XD (for now)
-
 Precedence order is PEMDAS (), ^, */ //, +-
 
 Parenthesis can span lines

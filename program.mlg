@@ -1,3 +1,5 @@
 # Not
-value = 0
+foo = -1
+value = 5 - 1
 res = (value - 1)/-1 +(1)
+res = -5

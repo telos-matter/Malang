@@ -230,6 +230,31 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         `parent_token` is the token that wants to process this value expression\n
         It does not care for EOLs and just process/parses whatever
         was given to it as long as it can be in a single expression'''
+        
+        def negateValue(tokens: list[Token], negate_token_index: int) -> tuple[Token | Node, int]:
+            '''Negates the value element after the negate token
+            at `negate_token_index`. Returns the negated value element and
+            the index at which to continue'''
+            i = negate_token_index # Ease of reference
+            assert tokens[i].type == TokenType.OP and tokens[i].lexeme == OP_SET.SUB.symbol, f"Passed something other than -"
+            
+            value = None
+            if len(tokens) <= i +1:
+                syntaxError(f"Expected a value to negate after this", tokens[i])
+            if tokens[i +1].type == TokenType.NUMBER:
+                tokens[i +1].lexeme *= -1
+                value = tokens[i +1]
+                i += 2
+            elif tokens[i +1].type == TokenType.IDENTIFIER:
+                negation_op = Token(TokenType.OP, OP_SET.MUL.symbol, *tokens[i].getSynthesizedInfo())
+                negation_l_value = Token(TokenType.NUMBER, -1, *tokens[i].getSynthesizedInfo())
+                negation = Node(NodeType.OP, op=negation_op, l_value=negation_l_value, r_value=tokens[i +1])
+                value = Node(NodeType.ORDER_PAREN, value=negation)
+                i += 2
+            else:
+                syntaxError(f"Can't negate something other than a value", tokens[i +1])
+            return (value, i)
+        
         buffer = []
         i = 0
         while i < len(tokens):
@@ -259,6 +284,11 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 i = close_paren +1
             
             elif tokenType == TokenType.OP:
+                if len(buffer) == 0 and token.lexeme == OP_SET.SUB.symbol:
+                    value, i = negateValue(tokens, i)
+                    buffer.append(value)
+                    continue
+                
                 if len(buffer) != 1 or not producesValue(buffer[0]): # Should have already found a value before
                     if len(buffer) == 0:
                         syntaxError(f"There should be a left-hand side value for this operation `{token}`", token)
@@ -274,7 +304,6 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                     r_value = tokens[i +1]
                     i += 2
                 elif tokens[i +1].type == TokenType.OPEN_PAREN:
-                    # TODO call self
                     close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +2)
                     if close_paren == None:
                         syntaxError(f"The closing parenthesis for this one is missing!", tokens[i +1])
@@ -282,21 +311,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                     r_value = Node(NodeType.ORDER_PAREN, value=value)
                     i = close_paren +1
                 elif tokens[i +1].type == TokenType.OP and tokens[i +1].lexeme == OP_SET.SUB.symbol:
-                    if len(tokens) <= i +2:
-                        syntaxError(f"Expected a value to negate here", tokens[i +1])
-                    if tokens[i +2].type == TokenType.NUMBER:
-                        tokens[i +2].lexeme *= -1
-                        r_value = tokens[i +2]
-                        i += 3
-                    elif tokens[i +2].type == TokenType.IDENTIFIER:
-                        negation = tokens[i +1]
-                        negation_op = Token(TokenType.OP, OP_SET.MUL.symbol, *negation.getSynthesizedInfo())
-                        negation_l_value = Token(TokenType.NUMBER, -1, *negation.getSynthesizedInfo())
-                        value = Node(NodeType.OP, op=negation_op, l_value=negation_l_value, r_value=tokens[i +2])
-                        r_value = Node(NodeType.ORDER_PAREN, value=value)
-                        i += 3
-                    else:
-                        syntaxError(f"Can't negate something other than a value", tokens[i +2])
+                    r_value, i = negateValue(tokens, i +1)
                 else:
                     syntaxError(f"This operation `{token}` requires a value after it, not this `{tokens[i +1]}`", tokens[i +1])
                 if type(buffer[0]) == Node and buffer[0].type == NodeType.OP: # If an op is the previous value then append
@@ -309,6 +324,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             
             else:
                 syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It shouldn't be there", token)
+        
         if len(buffer) != 1 or not producesValue(buffer[0]):
             if len(buffer) == 0:
                 syntaxError(f"Expected some sort of expression after this", parent_token)
