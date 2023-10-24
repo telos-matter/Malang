@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from core import OP_SET, Instruction
+from numbers import Number
 
 class TokenType (Enum):
     NUMBER      = auto()     # Any number
@@ -11,7 +12,7 @@ class TokenType (Enum):
     ASSIGN_OP   = auto()     # The assigning operation, `=`
 
 class Token ():
-    def __init__(self, tokenType: TokenType, lexeme: str | float | int, line: str, span: int, file_path: str, line_index: int, char_index: int) -> None:
+    def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int) -> None:
         '''`line`: the line in which this Token exists\n
         `span`: the length of the Token in the line
         '''
@@ -281,7 +282,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 i += 1
             
             else:
-                syntaxError(f"What is this `{token}` doing here? It shouldn't be there", token)
+                syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It shouldn't be there", token)
         if len(buffer) != 1 or not producesValue(buffer[0]):
             if len(buffer) == 0:
                 syntaxError(f"Expected some sort of expression after this", parent_token)
@@ -387,11 +388,53 @@ def validateAST (ast: list[Node]) -> None:
 
 
 def constructProgram (ast: list[Node]) -> Instruction:
-    '''Constructs the program from a valid AST'''
+    '''Constructs the program from a valid AST, translates
+    Nodes into Instructions'''
     
-    def setValueInstruction(value: float | int) -> Instruction:
+    def setValueInstruction(value: Number) -> Instruction:
         '''Creates an instruction that sets a value'''
         return Instruction(OP_SET.ADD, value, 0)
+    
+    def getInstruction(value: Node | Token, vars_state: dict[Token, Instruction]) -> Instruction | Number:
+        '''IDK how it will work when we have functions, but the
+        idea rn is that it takes stuff that don't affect
+        the `var_state`. RN there is only VAR_ASSIGN, so it takes
+        its value
+        and recessively calls it selfs to find its Instruction
+        or if its a simple number returns it
+        HMMM how about getValueInstruction, that way for params it would
+        call this and it works fine
+        Boi you worrying about the name and idea you gave to the function
+        YOU CAN EDIT BOI + ITS YOUR PROJECT STFU, do whatever you want'''
+        
+        if type(value) == Token:
+            if value.type == TokenType.NUMBER:
+                return value.lexeme
+            
+            elif value.type == TokenType.IDENTIFIER:
+                return vars_state[value]
+            
+            else:
+                assert False, f"Forgot to update this. Received {value}"
+            
+        elif type(value) == Node:
+            if value.type == NodeType.OP:
+                op = OP_SET.fromSymbol(value.components['op'].lexeme)
+                l_value = getInstruction(value.components['l_value'], vars_state)
+                r_value = getInstruction(value.components['r_value'], vars_state)
+                return Instruction(op, l_value, r_value)
+            
+            elif value.type == NodeType.ORDER_PAREN:
+                return getInstruction(value.components['value'], vars_state)
+            
+            elif value.type == NodeType.VAR_ASSIGN:
+                assert False, f"A Node.VAR_ASSIGN can't be here. {value}"
+            
+            else:
+                assert False, f"Forgot to update this. Received {value}"
+            
+        else:
+            assert False, f"Something other than Node and Token? {value}"
     
     return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, '', 0, None, 0, 0) # TODO maybe later on appoint it to the start line either of the function or the file
     vars_state = {return_var: setValueInstruction(0)}
@@ -399,21 +442,10 @@ def constructProgram (ast: list[Node]) -> Instruction:
     for node in ast:
         if node.type == NodeType.VAR_ASSIGN:
             var = node.components['var']
-            value = node.components['value']
-            if type(value) == Token:
-                if value.type == TokenType.NUMBER: # foo = 1
-                    vars_state[var] = setValueInstruction(value.lexeme)
-                elif value.type == TokenType.IDENTIFIER: # res = foo
-                    vars_state[var] = vars_state[value]
-                else:
-                    assert False, "Forgot to update this"
-            
-            elif type(value) == Node:
-                assert False, "Not yet impl"
-                pass
-
-            else:
-                assert False, "??"
+            value = getInstruction(node.components['value'], vars_state)
+            if isinstance(value, Number):
+                value = setValueInstruction(value)
+            vars_state[var] = value
             
         else:
             assert False, f"Something other than Node.VAR_ASSIGN"

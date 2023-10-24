@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 '''The core file
 It has the possible instructions
 And it is what runs and evaluates programmes'''
 
 from enum import Enum
-from typing import Callable
+from typing import Callable, Type
+from numbers import Number
 
 class OP_SET (Enum):
 #   OP   = (REPR, PRECEDENCE, FUNCTION)
@@ -23,7 +26,7 @@ class OP_SET (Enum):
         return self.value[1]
     
     @property
-    def function (self) -> Callable[[float | int, float | int], float | int]:
+    def function (self) -> Callable[[Number, Number], Number]:
         return self.value[2]
     
     @classmethod
@@ -48,7 +51,7 @@ class Instruction ():
     '''An entire program is a single instruction, that instruction
     it self may of course contain other instructions'''
     
-    def __init__(self, op: OP_SET, a, b) -> None:
+    def __init__(self, op: OP_SET, a: Number | Type[Instruction], b: Number | Type[Instruction]) -> None:
         '''`op`: the operation to preform\n
         `a`: the first argument as a number or another Instruction\n
         `b`: the second argument as a number or another Instruction\n'''
@@ -56,7 +59,8 @@ class Instruction ():
         self.a = a
         self.b = b
     
-    def evaluate(self) -> tuple[float | int, int]:
+    def evaluate(self) -> tuple[Number, int]:
+        '''Evaluates self'''
         counter = 1
         if type(self.a) == Instruction:
             self.a, _ = self.a.evaluate()
@@ -67,7 +71,8 @@ class Instruction ():
         
         return (self.op.function(self.a, self.b), counter)
     
-    def runProgram(self) -> None: 
+    def runProgram(self) -> None:
+        '''Runs the program and displays information about it'''
         import sys
         sys.setrecursionlimit(10_000) # If you are wondering, because I was, if the change is global (to all future python instances), no it is not, I tested it
         
