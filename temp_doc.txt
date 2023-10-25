@@ -2,5 +2,10 @@ Precedence order is PEMDAS (), ^, */ //, +-
 
 Parenthesis can span lines
 Var assign ends with new line unless parenthensis
+Parens can span multiple lines, but ops are in same line
 
-Vars are case sensitive 
+Vars are case sensitive
+
+
+def func (
+These need be like this, ) {} can span lines 

@@ -1,19 +1,23 @@
-# Not
-foo = -((((((((((((((-1))))))))))))))
-res = foo
-value = 5 - 1
-res = (value - 1)/-1 +(1)
-res = -5 + 1 + (
-    1 
-    - -2
-    +3 + (2 + 2)
-) +4 + 100 - 20 * (2 + 1
-                   -3) / 5
+def l () {
 
-# print(res) # 110
-
-foo = (1) + 2
+}
 
 
-res = -(-(-(-5)))
-# print(res)
+def foo (
+        raa,
+        baa,
+        aa, 
+        loo
+        
+        
+        ) 
+{
+    res = 5
+    test = res
+}
+
+def func () {
+    res = 3 + 2
+}
+
+res = func      (1,2)
