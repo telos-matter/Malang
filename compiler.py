@@ -222,14 +222,19 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             search_from += 1
         return None
     
-    def processValueExpression (tokens: list[Token], parent_token: Token) -> Node | Token:
+    def processValueExpression (tokens: list[Token], parent_token_index: int, skip_eols: bool) -> tuple[Node | Token, int]:
         '''Called to process a value expression and return a value element representing it\n
-        `tokens` is a sub list of the actual tokens and
-        would have the content of whatever is between parenthesis,
-        function parameters or a variable assignment for example\n
-        `parent_token` is the token that wants to process this value expression\n
-        It does not care for EOLs and just process/parses whatever
-        was given to it as long as it can be in a single expression'''
+        It would for example process whatever is in between parenthesis,
+        function parameters or a variable assignment. And returns where to continue\n
+        It process/parses whatever
+        it has as long as it can be in a single value expression\n
+        `tokens` is the list of the actual tokens\n
+        `parent_token_index` is the index
+        of token that wants to process this value expression, we
+        start right after it\n
+        `skip_eols` tells it whether it should halt if it encounters
+        a new line (useful when the ones who wants to process are
+        parenthesis)'''
         
         def negateValue(tokens: list[Token], negate_token_index: int) -> tuple[Token | Node, int]:
             '''Negates the value element after the negate token
@@ -238,25 +243,44 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             i = negate_token_index # Ease of reference
             assert tokens[i].type == TokenType.OP and tokens[i].lexeme == OP_SET.SUB.symbol, f"Passed something other than -"
             
+            token = tokens[i]
             value = None
             if len(tokens) <= i +1:
-                syntaxError(f"Expected a value to negate after this", tokens[i])
+                syntaxError(f"Expected a value to negate after this", token)
             if tokens[i +1].type == TokenType.NUMBER:
                 tokens[i +1].lexeme *= -1
                 value = tokens[i +1]
                 i += 2
-            elif tokens[i +1].type == TokenType.IDENTIFIER:
-                negation_op = Token(TokenType.OP, OP_SET.MUL.symbol, *tokens[i].getSynthesizedInfo())
-                negation_l_value = Token(TokenType.NUMBER, -1, *tokens[i].getSynthesizedInfo())
-                negation = Node(NodeType.OP, op=negation_op, l_value=negation_l_value, r_value=tokens[i +1])
+            elif tokens[i +1].type in [TokenType.IDENTIFIER, TokenType.OPEN_PAREN]:
+                negation_r_value = None
+                if tokens[i +1].type == TokenType.IDENTIFIER:
+                    negation_r_value = tokens[i +1]
+                    i += 2
+                elif tokens[i +1].type == TokenType.OPEN_PAREN:
+                    negation_r_value, i = processParen(tokens, i +1)
+                else:
+                    assert False, f"Unreachable"
+                negation_op = Token(TokenType.OP, OP_SET.MUL.symbol, *token.getSynthesizedInfo())
+                negation_l_value = Token(TokenType.NUMBER, -1, *token.getSynthesizedInfo())
+                negation = Node(NodeType.OP, op=negation_op, l_value=negation_l_value, r_value=negation_r_value)
                 value = Node(NodeType.ORDER_PAREN, value=negation)
-                i += 2
             else:
                 syntaxError(f"Can't negate something other than a value", tokens[i +1])
             return (value, i)
         
+        def processParen(tokens: list[tokens], open_paren: int) -> tuple[Node, int]:
+            '''Process just the parenthesis and stops\n
+            Returns a Node.ORDER_PAREN and the index at which to continue'''
+            assert tokens[open_paren].type == TokenType.OPEN_PAREN, f"Passed something other open_paren: {tokens[open_paren]}"
+            close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, open_paren +1)
+            if close_paren == None:
+                syntaxError(f"The closing parenthesis for this one is missing!", tokens[open_paren])
+            value, _ = processValueExpression(tokens[open_paren : close_paren], 0, True)
+            node = Node(NodeType.ORDER_PAREN, value=value)
+            return (node, close_paren +1)
+        
         buffer = []
-        i = 0
+        i = parent_token_index +1
         while i < len(tokens):
             token = tokens[i]
             tokenType = token.type
@@ -276,12 +300,8 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             elif tokenType == TokenType.OPEN_PAREN:
                 if len(buffer) != 0:
                     syntaxError(f"This open parenthesis `{token}` can't be here! Expected an operation", token)
-                close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1)
-                if close_paren == None:
-                    syntaxError(f"The closing parenthesis for this one is missing!", token)
-                value = processValueExpression(tokens[i +1 : close_paren], token)
-                buffer.append(Node(NodeType.ORDER_PAREN, value=value))
-                i = close_paren +1
+                node, i = processParen(tokens, i)
+                buffer.append(node)
             
             elif tokenType == TokenType.OP:
                 if len(buffer) == 0 and token.lexeme == OP_SET.SUB.symbol:
@@ -304,12 +324,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                     r_value = tokens[i +1]
                     i += 2
                 elif tokens[i +1].type == TokenType.OPEN_PAREN:
-                    close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +2)
-                    if close_paren == None:
-                        syntaxError(f"The closing parenthesis for this one is missing!", tokens[i +1])
-                    value = processValueExpression(tokens[i +2 : close_paren], tokens[i +1])
-                    r_value = Node(NodeType.ORDER_PAREN, value=value)
-                    i = close_paren +1
+                    r_value, i = processParen(tokens, i +1)
                 elif tokens[i +1].type == TokenType.OP and tokens[i +1].lexeme == OP_SET.SUB.symbol:
                     r_value, i = negateValue(tokens, i +1)
                 else:
@@ -320,20 +335,27 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                     buffer[0] = Node(NodeType.OP, op=token, l_value=buffer[0], r_value=r_value)
             
             elif tokenType == TokenType.EOL:
-                i += 1
+                assert skip_eols is not None, f"Who gave you None?"
+                if skip_eols:
+                    i += 1
+                else:
+                    break
+            
+            elif tokenType == TokenType.CLOSE_PAREN:
+                syntaxError(f"You forgot the opening parenthesis for this one", token)
             
             else:
                 syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It shouldn't be there", token)
         
         if len(buffer) != 1 or not producesValue(buffer[0]):
             if len(buffer) == 0:
-                syntaxError(f"Expected some sort of expression after this", parent_token)
+                syntaxError(f"Expected some sort of expression after this", tokens[parent_token_index])
             elif len(buffer) == 1:
                 assert False, f"Buffer has a none value element: {buffer[0]}"
                 # raise Exception(f"SYNTAX ERROR: Can't assign this `{buffer[0]}` to this variable `{token}`.\n{token.location()}")
             else:
                 assert False, f"Buffer contains more than 1 element: {buffer}"
-        return buffer[0]
+        return (buffer[0], i)
     
     ast = []
     i = 0
@@ -344,18 +366,8 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         if tokenType == TokenType.IDENTIFIER: # var_assign
             if len(tokens) <= i +1 or tokens[i +1].type != TokenType.ASSIGN_OP:
                 syntaxError(f"There should be an assignment operator after this variable `{token}`\nVariables can't be declared without assigning a value to them", token)
-            i += 2
-            eol = findToken(tokens, TokenType.EOL, i)
-            assert eol != None, f"EOL was not appended to the line of this token: {token}\n{token.location()}"
-            open_paren = findToken(tokens[: eol], TokenType.OPEN_PAREN, i)
-            if open_paren != None: # If there is a paren, then look for the last EOL
-                end_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, open_paren +1)
-                if end_paren == None:
-                    syntaxError(f"The closing parenthesis for this one is missing!", tokens[open_paren])
-                eol = findToken(tokens, TokenType.EOL, end_paren +1)
-                assert eol != None, f"EOL was not appended to the line of this token: {token}\n{token.location()}"
-            ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=processValueExpression(tokens[i : eol], tokens[i -1])))
-            i = eol +1
+            value, i = processValueExpression(tokens, i +1, False)
+            ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=value))
         
         elif tokenType == TokenType.EOL: # Skip
             i += 1
