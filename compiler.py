@@ -236,9 +236,12 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             search_from += 1
         return None
     
-    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int) -> int | None:
+    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int, required: Token=None) -> int | None:
         '''Returns the index of the enclosing token starting from `search_from`
-        This handles nested tokens such as ((())) for example'''
+        This handles nested tokens such as ((())) for example\n
+        `required` should have the opening token
+        if you want this function to raise a SyntaxError if 
+        the closing element was not found'''
         depth = 1
         while search_from < len(tokens):
             tokenType = tokens[search_from].type
@@ -249,6 +252,8 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             if depth == 0:
                 return search_from
             search_from += 1
+        if required is not None:
+            syntaxError(f"The closing element for this one is missing.", required)
         return None
     
     def isNextToken (tokens: list[Token], tokenType: TokenType, start_from: int) -> int | None:
@@ -294,9 +299,12 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 i += 2
             elif tokens[i +1].type in [TokenType.IDENTIFIER, TokenType.OPEN_PAREN]:
                 negation_r_value = None
-                if tokens[i +1].type == TokenType.IDENTIFIER:
-                    negation_r_value = tokens[i +1]
-                    i += 2
+                if tokens[i +1].type == TokenType.IDENTIFIER: # A variable or Node.FUNC_CALL
+                    if i +2 < len(tokens) and tokens[i +2].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                        negation_r_value, i = processFuncCall(tokens, tokens[i +1], i +2)
+                    else: # A variable
+                        negation_r_value = tokens[i +1]
+                        i += 2
                 elif tokens[i +1].type == TokenType.OPEN_PAREN:
                     negation_r_value, i = processParen(tokens, i +1)
                 else:
@@ -332,11 +340,16 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 buffer.append(token)
                 i += 1
             
-            elif tokenType == TokenType.IDENTIFIER:
+            elif tokenType == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL
                 if len(buffer) != 0:
                     syntaxError(f"The variable `{token}` can't be here! Expected an operation", token)
-                buffer.append(token)
-                i += 1
+                if i +1 < len(tokens) and tokens[i +1].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                    func_call, i = processFuncCall(tokens, token, i +1)
+                    buffer.append(func_call)
+                
+                else: # A variable
+                    buffer.append(token)
+                    i += 1
             
             elif tokenType == TokenType.OPEN_PAREN:
                 if len(buffer) != 0:
@@ -361,9 +374,15 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 if len(tokens) <= i +1:
                     syntaxError(f"There should be a right-hand side value for this operation `{token}`", token)
                 r_value = None
-                if tokens[i +1].type in [TokenType.NUMBER, TokenType.IDENTIFIER]: # TODO separate once we have func_call
+                if tokens[i +1].type == TokenType.NUMBER:
                     r_value = tokens[i +1]
                     i += 2
+                elif tokens[i +1].type == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL
+                    if i +2 < len(tokens) and tokens[i +2].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                        r_value, i = processFuncCall(tokens, tokens[i +1], i +2)
+                    else: # A variable
+                        r_value = tokens[i +1]
+                        i += 2
                 elif tokens[i +1].type == TokenType.OPEN_PAREN:
                     r_value, i = processParen(tokens, i +1)
                 elif tokens[i +1].type == TokenType.OP and tokens[i +1].lexeme == OP_SET.SUB.symbol:
@@ -382,6 +401,9 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 else:
                     break
             
+            elif tokenType == TokenType.COMMA: # End of arg for Node.FUNC_CALL
+                break
+            
             elif tokenType == TokenType.CLOSE_PAREN:
                 syntaxError(f"You forgot the opening parenthesis for this one", token)
             
@@ -398,6 +420,26 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 assert False, f"Buffer contains more than 1 element: {buffer}"
         return (buffer[0], i)
     
+    def processFuncCall (tokens: list[Token], func: Token, open_paren_index: int) -> tuple[Node, int]:
+        '''Processes a function call and returns a Node.FUNC_CALL
+        and the index at which to continue, which is where the function
+        call ends +1'''
+        i = open_paren_index # Ease of reference
+        assert func.type == TokenType.IDENTIFIER, f"Not Token.IDENTIFIER"
+        assert tokens[i].type == TokenType.OPEN_PAREN, f"Not Token.OPEN_PAREN"
+        
+        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, tokens[i])
+        args = []
+        if isNextToken(tokens, TokenType.CLOSE_PAREN, i +1) is None: # If it has some args
+            args_tokens = tokens[i : close_paren]
+            inc = 0
+            while i +inc < close_paren:
+                arg, inc = processValueExpression(args_tokens, inc, True)
+                if i +inc < close_paren:
+                    assert tokens[i +inc].type == TokenType.COMMA, f"Not sure if this should be an assert or Syntax Error" # I think rn it should be assert, cuz the only thing that should exit it is the comma
+                args.append(arg)
+        return (Node(NodeType.FUNC_CALL, func=func, args=args), close_paren +1)
+    
     ast = []
     i = 0
     while i < len(tokens):
@@ -405,11 +447,19 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         tokenType = token.type
         
         if tokenType == TokenType.IDENTIFIER: # Node.VAR_ASSIGN or Node.FUNC_CALL
-            # TODO add func_call support
-            if len(tokens) <= i +1 or tokens[i +1].type != TokenType.ASSIGN_OP:
-                syntaxError(f"There should be an assignment operator after this variable `{token}`\nVariables can't be declared without assigning a value to them", token)
-            value, i = processValueExpression(tokens, i +1, False)
-            ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=value))
+            if len(tokens) <= i +1:
+                syntaxError(f"Expected something after this identifier", token)
+            i += 1
+            if tokens[i].type == TokenType.ASSIGN_OP: # Node.VAR_ASSIGN
+                value, i = processValueExpression(tokens, i, False)
+                ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=value))
+            
+            elif tokens[i].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                func_call, i = processFuncCall(tokens, token, i)
+                ast.append(func_call)
+            
+            else:
+                syntaxError(f"Was not expecting this after an identifier", tokens[i])
         
         elif tokenType == TokenType.DEF_KW: # Node.FUNC_DEF:
             i += 1
@@ -459,7 +509,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             body = constructAST(tokens[open_curly +1 : close_curly])
             ast.append(Node(NodeType.FUNC_DEF, params=params, body=body))
             i = close_curly +1
-
+        
         elif tokenType == TokenType.EOL: # Skip
             i += 1
         
