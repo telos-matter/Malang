@@ -3,7 +3,7 @@
 
 Programming using, literally, only math
 
-Still working on it, but for a quick demo check the lexer.py
+Still working on it, check out the other branch for progress
 
 <br>
 
