@@ -1,26 +1,5 @@
-# def l () {
+def foo (a) {
+    res = 5
+}
 
-# }
-
-
-# def foo (
-#         raa,
-#         baa,
-#         aa, 
-#         loo
-        
-        
-#         ) 
-# {
-#     res = 5
-#     test = res
-# }
-
-# def func () {
-#     res = 3 + 2
-# }
-
-foo(foo(5,1), 2)
-
-res = 1 - foo      (1,2)
-
+res = foo()

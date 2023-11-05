@@ -9,3 +9,11 @@ Vars are case sensitive
 
 def func (
 These need be like this, ) {} can span lines 
+
+For the time being you can only reference vars inside your scope
+Planning on adding an ext keyword and referencing outside variables, maybe
+
+A function is only defined when it hits the }
+Ofc no recursion and can only call functions above you
+
+You can define functions inside functions with same name? idk

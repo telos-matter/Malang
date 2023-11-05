@@ -43,6 +43,10 @@ class Token ():
         this `self` token'''
         return (self.line, 0, self.file, self.line_number -1, self.char_number -1, True)
     
+    def isValueToken (self) -> bool:
+        '''Whether this Token is a value element token or not'''
+        return self.type in [TokenType.IDENTIFIER, TokenType.NUMBER]
+    
     def __eq__(self, other: object) -> bool:
         if isinstance(other, self.__class__):
             return self.type == other.type and self.lexeme == other.lexeme
@@ -167,25 +171,48 @@ class Node():
         `ORDER_PAREN`:
             value: a value element representing their content
         `FUNC_DEF`:
+            func: an identifier token representing the function being defined
             params: a list of identifier tokens representing the parameters
-            body: a list of nodes representing the body of the function. It
+            body: a list of nodes (another AST) representing the body of the function. It
             can contain any other node, including another Node.FUNC_DEF
         `FUNC_CALL`:
             func: an identifier token representing the function being called
             args: a list of value elements representing the arguments
         \n
-        A value element means a Token or a Node that can return or is a value, one
-        fo these: Token.NUMBER, Token.IDENTIFIER, Node.OP, Node.ORDER_PAREN or
+        A value element means a Token or a Node that can return or is a value, which
+        is any
+        of these: Token.NUMBER, Token.IDENTIFIER, Node.OP, Node.ORDER_PAREN or
         Node.FUNC_CALL
         '''
         self.type = nodeType
         self.components = components
     
+    def isValueNode (self) -> bool:
+        '''Whether this Node is a value element node or not'''
+        return self.type in [NodeType.OP, NodeType.ORDER_PAREN ,NodeType.FUNC_CALL]
+    
+    def isInstructionNode (self) -> bool:
+        '''Whether this Node is an instruction node or not\n
+        Instruction nodes are the Nodes contained in the AST.'''
+        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_CALL, NodeType.FUNC_DEF]
+    
     def __repr__(self) -> str:
         return f"{self.type}\n\t=> {self.components}"
 
+def isValueElement (element: Token | Node) -> bool:
+    '''Checks if the element is a value element'''
+    if type(element) == Token:
+        return element.isValueToken()
+    elif type(element) == Node:
+        return element.isValueNode()
+    else:
+        assert False, f"Passed something other than Token or Node, {element}"
+
+# TODO have some sort of function that returns the immediate next value
 def constructAST (tokens: list[Token]) -> list[Node]:
     '''Takes tokens and construct a list of nodes representing their ast
+    , which would only contain one of these nodes:
+    Node.VAR_ASSIGN, Node.FUNC_DEF or Node.FUNC_CALL\n
     Does not check for the validity of the
     code (referencing a none existing variable for example or recursion),
     only checks for validity of the structure / syntax'''
@@ -194,15 +221,6 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         '''Raises a syntax error exception'''
         message = "SYNTAX ERROR: " +message +f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
-    
-    def producesValue (element: Token | Node) -> bool:
-        '''Checks if the element is a value element'''
-        if type(element) == Token:
-            return element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]
-        elif type(element) == Node:
-            return element.type in [NodeType.OP, NodeType.ORDER_PAREN, NodeType.FUNC_CALL]
-        else:
-            assert False, f"Passed something other than Token or Node, {element}"
     
     def appendOP (root_node: Node, op: Token, r_value: Token | Node) -> Node:
         '''Adds the `op` to the tree according to the precedence of its content
@@ -214,7 +232,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         '''
         assert root_node.type == NodeType.OP, f"The root_node is not a Node.OP"
         assert op.type == TokenType.OP, f"The op is not an op token"
-        assert producesValue(r_value), f"Passed an r_value that does not produce value"
+        assert isValueElement(r_value), f"Passed an r_value that does not produce value"
         
         if OP_SET.fromSymbol(root_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
             return Node(NodeType.OP, op=op, l_value=root_node, r_value=r_value)
@@ -282,6 +300,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
         a new line (useful when the ones who wants to process are
         parenthesis)'''
         
+        # FIXME -5^2 should be -25 not 25, maybe just remove parenthesis
         def negateValue(tokens: list[Token], negate_token_index: int) -> tuple[Token | Node, int]:
             '''Negates the value element after the negate token
             at `negate_token_index`. Returns the negated value element and
@@ -363,7 +382,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                     buffer.append(value)
                     continue
                 
-                if len(buffer) != 1 or not producesValue(buffer[0]): # Should have already found a value before
+                if len(buffer) != 1 or not isValueElement(buffer[0]): # Should have already found a value before
                     if len(buffer) == 0:
                         syntaxError(f"There should be a left-hand side value for this operation `{token}`", token)
                     elif len(buffer) == 1:
@@ -410,7 +429,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             else:
                 syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It shouldn't be there", token)
         
-        if len(buffer) != 1 or not producesValue(buffer[0]):
+        if len(buffer) != 1 or not isValueElement(buffer[0]):
             if len(buffer) == 0:
                 syntaxError(f"Expected some sort of expression after this", tokens[parent_token_index])
             elif len(buffer) == 1:
@@ -465,6 +484,7 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             i += 1
             if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
                 syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{token}` keyword", token)
+            func = tokens[i]
             i += 1
             if len(tokens) <= i or tokens[i].type != TokenType.OPEN_PAREN:
                 syntaxError(f"There should be an open parenthesis right after the function's name that starts the definition of this function parameters", tokens[i])
@@ -507,15 +527,17 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             if close_curly is None:
                 syntaxError(f"This open curly bracket is missing its closing one", tokens[open_curly])
             body = constructAST(tokens[open_curly +1 : close_curly])
-            ast.append(Node(NodeType.FUNC_DEF, params=params, body=body))
+            ast.append(Node(NodeType.FUNC_DEF, func=func, params=params, body=body))
             i = close_curly +1
         
         elif tokenType == TokenType.EOL: # Skip
             i += 1
         
         else:
-            syntaxError(f"This `{token}` cannot start a new expression", token)
+            syntaxError(f"This `{token}` cannot start a new instruction", token)
     
+    for node in ast:
+        assert node.isInstructionNode(), f"AST contains something other than an instruction node"
     return ast
 
 
@@ -523,64 +545,129 @@ RETURN_VAR_NAME = 'res'
 
 def validateAST (ast: list[Node]) -> None:
     '''Checks for the validity of the code; referencing
-    a none existing variable and so on'''
+    a none existing variable, or defining an already existing
+    function. (Recursion and cyclic calls are automatically 
+    accounted for by the fact that functions definitions
+    are sequential)'''
     
     def invalidCode (message: str, token: Token) -> None:
+        print(f'HERE {type(token)}, {token}') # TODO remove line
         '''Raises an invalid code exception'''
         message = "INVALID CODE: " +message
         if token is not None:
             message += f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
     
-    def getUsedVars (node: Node) -> set[Token]:
-        '''Returns a list of Token.IDENTIFIER representing
-        the variables USED BY this node. And NOT the
-        variable it self in case of Node.VAR_ASSIGN for example'''
-        # TODO recheck this to optimize
+    def getVarsUsedByValueElement (value_element: Node | Token) -> set[Token]:
+        '''Returns a set of Token.IDENTIFIER representing
+        the variables USED BY this value element.'''
+        assert isValueElement(value_element), f"Passed something other than a Value Element"
         
-        if node.type == NodeType.VAR_ASSIGN:
-            value = node.components['value']
-            if type(value) == Token and value.type == TokenType.IDENTIFIER:
-                return {value}
-            elif type(value) == Node and value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
-                return getUsedVars(value)
+        if type(value_element) == Token:
+            if value_element.type == TokenType.IDENTIFIER:
+                return {value_element}
+            
+            elif value_element.type == TokenType.NUMBER:
+                return set()
         
-        elif node.type == NodeType.OP:
-            vars = set()
-            l_value = node.components['l_value']
-            if type(l_value) == Token and l_value.type == TokenType.IDENTIFIER:
-                vars.add(l_value)
-            elif type(l_value) == Node and l_value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
-                vars |= getUsedVars(l_value)
-            r_value = node.components['r_value']
-            if type(r_value) == Token and r_value.type == TokenType.IDENTIFIER:
-                vars.add(r_value)
-            elif type(r_value) == Node and r_value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
-                vars |= getUsedVars(r_value)
-            return vars
+        elif type(value_element) == Node:
+            if value_element.type == NodeType.OP:
+                l_value = value_element.components['l_value']
+                vars = getVarsUsedByValueElement(l_value)
+                r_value = value_element.components['r_value']
+                vars |= getVarsUsedByValueElement(r_value)
+                return vars
+            
+            elif value_element.type == NodeType.ORDER_PAREN:
+                value = value_element.components['value']
+                return getVarsUsedByValueElement(value)
+            
+            elif value_element.type == NodeType.FUNC_CALL:
+                vars = set()
+                args = value_element.components['args']
+                for arg in args:
+                    vars |= getVarsUsedByValueElement(arg)
+                return vars
         
-        elif node.type == NodeType.ORDER_PAREN:
-            value = node.components['value']
-            if type(value) == Token and value.type == TokenType.IDENTIFIER:
-                return {value}
-            elif type(value) == Node and value.type in [NodeType.OP, NodeType.ORDER_PAREN]:
-                return getUsedVars(value)
-        
-        else:
-            assert False, f"You forgot to update this"
-        return set()
+        assert False, f"Unreachable"
     
-    vars = {Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, '', 0, None, 0, 0)} # TODO maybe later on appoint it to the start line either of the function or the file
-    for node in ast:
-        if node.type == NodeType.VAR_ASSIGN:
-            used_vars = getUsedVars(node)
-            if not used_vars.issubset(vars):
-                var = next(iter(used_vars.difference(vars)))
-                invalidCode(f"This variable `{var}` was referenced before assignment", var)
-            vars.add(node.components['var'])
+    def getFuncsUsedByValueElement (value_element: Node | Token) -> set[Token]:
+        '''Returns a set of Token.IDENTIFIER representing
+        the functions USED BY this value element.'''
+        assert isValueElement(value_element), f"Passed something other than a Value Element"
         
-        else:
-            assert False, f"Something other than Node.VAR_ASSIGN"
+        if type(value_element) == Token:
+            if value_element.type == TokenType.IDENTIFIER:
+                return set()
+            
+            elif value_element.type == TokenType.NUMBER:
+                return set()
+        
+        elif type(value_element) == Node:
+            if value_element.type == NodeType.OP:
+                l_value = value_element.components['l_value']
+                funcs = getFuncsUsedByValueElement(l_value)
+                r_value = value_element.components['r_value']
+                funcs |= getFuncsUsedByValueElement(r_value)
+                return funcs
+            
+            elif value_element.type == NodeType.ORDER_PAREN:
+                value = value_element.components['value']
+                return getFuncsUsedByValueElement(value)
+            
+            elif value_element.type == NodeType.FUNC_CALL:
+                funcs = {value_element.components['func']}
+                args = value_element.components['args']
+                for arg in args:
+                    funcs |= getFuncsUsedByValueElement(arg)
+                return funcs
+        
+        assert False, f"Unreachable"
+    
+    def checkVarsAndFuncsUsedByValueElement (value_element: Node | Token, vars: set[Token], funcs: set[Token]) -> None:
+        '''Checks if the variables and functions used
+        by this value element already exist'''
+        assert isValueElement(value_element), f"Something other than value element"
+        
+        used_vars = getVarsUsedByValueElement(value_element)
+        if not used_vars.issubset(vars):
+            var = next(iter(used_vars.difference(vars)))
+            invalidCode(f"Unknown variable `{var}`", var)
+        used_funcs = getFuncsUsedByValueElement(value_element)
+        if not used_funcs.issubset(funcs):
+            func = next(iter(used_funcs.difference(funcs)))
+            invalidCode(f"Unknown / undefined function `{func}`", func)
+    
+    def validate (ast: list[Node], vars: set[Token], funcs: set[Token]) -> None:
+        '''The functions that actually validates the AST.\n
+        It is put here because it can be called recursively\n
+        `vars`: the variables that I have access to\n
+        `funcs`: the funcs that I have access to'''
+        
+        for node in ast:
+            if node.type == NodeType.VAR_ASSIGN:
+                value = node.components['value']
+                checkVarsAndFuncsUsedByValueElement(value, vars, funcs)
+                vars.add(node.components['var'])
+            
+            elif node.type == NodeType.FUNC_DEF:
+                func = node.components['func']
+                if func in funcs:
+                    original = [original for original in funcs if original == func][0]
+                    invalidCode(f"This function `{func}` is already defined here:\n{original.location()}: {original.pointOut()}", func)
+                func_vars = {Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, *func.getSynthesizedInfo())}
+                func_vars |= set(node.components['params'])
+                validate(node.components['body'], func_vars, funcs.copy())
+                funcs.add(func)
+            
+            elif node.type == NodeType.FUNC_CALL:
+                checkVarsAndFuncsUsedByValueElement(node, vars, funcs)
+            
+            else:
+                assert False, f"Forgot to update this. Expecting instruction nodes"
+
+    return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, '', 0, None, 0, 0) # TODO appoint it to the start line either of the function or the file. Requires adding begin_file token
+    validate(ast, {return_var}, set())
 
 
 def constructProgram (ast: list[Node]) -> Instruction:

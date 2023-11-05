@@ -1,0 +1,8 @@
+Value elements:
+Tokens:
+	Token.NUMBER
+	Token.IDENTIFIER
+Nodes:
+	Node.OP
+	Node.ORDER_PAREN
+	Node.FUNC_CALL
