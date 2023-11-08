@@ -104,13 +104,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
             while i < len(line):
                 char = line[i]
                 
-                if char in OP_SET.getSymbols():
-                    if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.IDIV.symbol[1]: # Handles `//`
-                        char = line[i : i +2]
-                    tokens.append(Token(TokenType.OP, char, line, len(char), file_path, line_index, i))
-                    i += len(char)
-                
-                elif char.isdigit() or (char == '-' and i +1 < len(line) and line[i +1].isdigit()): # Handles negative numbers too
+                if char.isdigit() or (char == '-' and i +1 < len(line) and line[i +1].isdigit()): # Handles negative numbers too
                     number = char
                     j = i +1
                     while j < len(line) and (line[j].isdigit() or line[j] == NUMBER_PERIOD or line[j] == NUMBER_SEP):
@@ -125,6 +119,12 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         parsingError(f"Couldn't parse this number: `{number}`", temp_token)
                     tokens.append(Token(TokenType.NUMBER, number, line, j -i, file_path, line_index, i))
                     i = j
+                
+                elif char in OP_SET.getSymbols(): # Should be after number to handle negative numbers
+                    if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.IDIV.symbol[1]: # Handles `//`
+                        char = line[i : i +2]
+                    tokens.append(Token(TokenType.OP, char, line, len(char), file_path, line_index, i))
+                    i += len(char)
                 
                 elif char == '(':
                     tokens.append(Token(TokenType.OPEN_PAREN, char, line, len(char), file_path, line_index, i))
@@ -273,10 +273,10 @@ def constructAST (tokens: list[Token]) -> Node:
         message = "❌ SYNTAX ERROR: " +message +f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
     
-    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int, required: Token) -> int | None:
+    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int, required: Token | None) -> int | None:
         '''Returns the index of the enclosing token starting from `search_from`.
         This handles nested tokens such as ((())) for example\n
-        `tokens`: normally, a list of all the tokens
+        `tokens`: normally, a list of all the tokens\n
         `required`: should have the opening token, the
         one whose enclosing token you want to find,
         if you want this function to raise a SyntaxError if 
@@ -297,7 +297,7 @@ def constructAST (tokens: list[Token]) -> Node:
             syntaxError(f"The enclosing element for this one is missing.", required)
         return None
     
-    def isNextToken (tokens: list[Token], tokenType: TokenType, start_from: int, required: tuple[str, Token]) -> int | None:
+    def isNextToken (tokens: list[Token], tokenType: TokenType, start_from: int, required: tuple[str, Token] | None) -> int | None:
         '''Checks if the next token, from `start_from`, is `tokenType`, while skipping over
         Token.EOLs. If it is return its index, otherwise `None`\n
         `required`: if it's required that the next token be `tokenType`
@@ -326,175 +326,116 @@ def constructAST (tokens: list[Token]) -> Node:
         `parent_token`: the token that "wants" this value expression. To raise a SyntaxError with in case of an error\n
         `start_index`: from where to start processing\n
         `skip_eols`: skip EOLs or terminate when encountered\n
-        `accepts_semicolons`: can a semicolon terminate this value expression?\n
-        `accepts_comas`: can a coma terminate this value expression?\n'''
+        `accepts_semicolons`: can a semicolon be in this value expression?\n
+        `accepts_comas`: can a coma be in this value expression?\n'''
         
-        def nextValue (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool, accepts_semicolons: bool, accepts_comas: bool) -> tuple[Node | Token, int]:
-            pass
-        
-        def appendOP (root_node: Node, op: Token, r_value: Token | Node) -> Node:
-            '''Adds the `op` to the tree according to the precedence of its content
-            and returns the new root node\n
-            The process of appending goes as follows:\n
-            \tIf the root_nodes' precedence is greater than or equal to mine => It is my l_value\n
-            \tOtherwise => Im its new r_value, and its old r_value is my l_value (treating
-            the r_value in a recursive fashion)\n
-            '''
-            assert root_node.type == NodeType.OP, f"The root_node is not a Node.OP"
-            assert op.type == TokenType.OP, f"The op is not an op token"
-            assert isValueElement(r_value), f"Passed an r_value that does not produce value"
+        def nextSingletonValue (tokens: list[Token], parent_token: Token, start_index: int) -> tuple[Node | Token, int]:
+            '''Returns the immediate next singleton
+            value starting from `start_index` along side the index
+            on which to continue.\n
+            A singleton value is a value element that exists on it's own. The
+            only value element that is an exception to this is Node.OP, as it requires
+            two value elements\n
+            `tokens`: normally, a list of all the tokens\n
+            `parent_token`: the token that "wants" this singleton value. To raise a SyntaxError with in case of an error\n
+            `start_index`: from where to start\n'''
             
-            if OP_SET.fromSymbol(root_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
-                return Node(NodeType.OP, op=op, l_value=root_node, r_value=r_value)
-            else:
-                root_r_value = root_node.components['r_value']
-                new_r_value = None
-                if type(root_r_value) == Node and root_r_value.type == NodeType.OP:
-                    new_r_value = appendOP(root_r_value, op, r_value)
-                else:
-                    new_r_value = Node(NodeType.OP, op=op, l_value=root_r_value, r_value=r_value)
-                root_node.components['r_value'] = new_r_value
-                return root_node
-        
-        def negateValue(tokens: list[Token], negate_token_index: int) -> tuple[Token | Node, int]:
-            # FIXME -5^2 should be -25 not 25, maybe just remove parenthesis
-            '''Negates the value element after the negate token
-            at `negate_token_index`. Returns the negated value element and
-            the index at which to continue'''
-            i = negate_token_index # Ease of reference
-            assert tokens[i].type == TokenType.OP and tokens[i].lexeme == OP_SET.SUB.symbol, f"Passed something other than -"
-            
-            token = tokens[i]
-            value = None
-            if len(tokens) <= i +1:
-                syntaxError(f"Expected a value to negate after this", token)
-            if tokens[i +1].type == TokenType.NUMBER:
-                tokens[i +1].lexeme *= -1
-                value = tokens[i +1]
-                i += 2
-            elif tokens[i +1].type in [TokenType.IDENTIFIER, TokenType.OPEN_PAREN]:
-                negation_r_value = None
-                if tokens[i +1].type == TokenType.IDENTIFIER: # A variable or Node.FUNC_CALL
-                    if i +2 < len(tokens) and tokens[i +2].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
-                        negation_r_value, i = processFuncCall(tokens, tokens[i +1], i +2)
-                    else: # A variable
-                        negation_r_value = tokens[i +1]
-                        i += 2
-                elif tokens[i +1].type == TokenType.OPEN_PAREN:
-                    negation_r_value, i = processParen(tokens, i +1)
-                else:
-                    assert False, f"Unreachable"
-                negation_op = Token(TokenType.OP, OP_SET.MUL.symbol, *token.getSynthesizedInfo())
-                negation_l_value = Token(TokenType.NUMBER, -1, *token.getSynthesizedInfo())
-                negation = Node(NodeType.OP, op=negation_op, l_value=negation_l_value, r_value=negation_r_value)
-                value = Node(NodeType.ORDER_PAREN, value=negation)
-            else:
-                syntaxError(f"Can't negate something other than a value", tokens[i +1])
-            return (value, i)
-        
-        def processParen(tokens: list[tokens], open_paren: int) -> tuple[Node, int]:
-            '''Process just the parenthesis and stops\n
-            Returns a Node.ORDER_PAREN and the index at which to continue'''
-            assert tokens[open_paren].type == TokenType.OPEN_PAREN, f"Passed something other open_paren: {tokens[open_paren]}"
-            close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, open_paren +1)
-            if close_paren == None:
-                syntaxError(f"The closing parenthesis for this one is missing!", tokens[open_paren])
-            value, _ = processValueExpression(tokens[open_paren : close_paren], 0, True)
-            node = Node(NodeType.ORDER_PAREN, value=value)
-            return (node, close_paren +1)
-        
-        #TODO function that returns immediate next value
-        
-        buffer = []
-        i = parent_token_index +1
-        while i < len(tokens):
+            i = start_index # Just for ease of reference
             token = tokens[i]
             tokenType = token.type
+            singleton_value_element = None
             
-            if tokenType == TokenType.NUMBER:
-                if len(buffer) != 0:
-                    syntaxError(f"The number `{token}` can't be here! Expected an operation.", token)
-                buffer.append(token)
+            if tokenType == TokenType.NUMBER: # Token.NUMBER
+                singleton_value_element = token
                 i += 1
             
             elif tokenType == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL
-                if len(buffer) != 0:
-                    syntaxError(f"The variable `{token}` can't be here! Expected an operation", token)
                 if i +1 < len(tokens) and tokens[i +1].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
-                    func_call, i = processFuncCall(tokens, token, i +1)
-                    buffer.append(func_call)
+                    singleton_value_element, i = processFuncCall(tokens, token, i +1)
                 
                 else: # A variable
-                    buffer.append(token)
+                    singleton_value_element = token
                     i += 1
             
-            elif tokenType == TokenType.OPEN_PAREN:
-                if len(buffer) != 0:
-                    syntaxError(f"This open parenthesis `{token}` can't be here! Expected an operation", token)
-                node, i = processParen(tokens, i)
-                buffer.append(node)
+            elif tokenType == TokenType.OPEN_PAREN: # Node.ORDER_PAREN
+                close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, token)
+                value, _ = processValueExpression(tokens[i : close_paren], token, 0, True, False, False)
+                singleton_value_element = Node(NodeType.ORDER_PAREN, value=value)
+                i = close_paren +1
             
-            elif tokenType == TokenType.OP:
-                if len(buffer) == 0 and token.lexeme == OP_SET.SUB.symbol:
-                    value, i = negateValue(tokens, i)
-                    buffer.append(value)
-                    continue
-                
-                if len(buffer) != 1 or not isValueElement(buffer[0]): # Should have already found a value before
-                    if len(buffer) == 0:
-                        syntaxError(f"There should be a left-hand side value for this operation `{token}`", token)
-                    elif len(buffer) == 1:
-                        assert False, f"Buffer has a none value element: {buffer[0]}"
-                        # raise Exception(f"SYNTAX ERROR: Can't use this `{buffer[0]}` with this operation `{tokens[i]}`.\n{tokens[i].location()}")
-                    else:
-                        assert False, f"Buffer has more than one element: {buffer}"
-                if len(tokens) <= i +1:
-                    syntaxError(f"There should be a right-hand side value for this operation `{token}`", token)
-                r_value = None
-                if tokens[i +1].type == TokenType.NUMBER:
-                    r_value = tokens[i +1]
-                    i += 2
-                elif tokens[i +1].type == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL
-                    if i +2 < len(tokens) and tokens[i +2].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
-                        r_value, i = processFuncCall(tokens, tokens[i +1], i +2)
-                    else: # A variable
-                        r_value = tokens[i +1]
-                        i += 2
-                elif tokens[i +1].type == TokenType.OPEN_PAREN:
-                    r_value, i = processParen(tokens, i +1)
-                elif tokens[i +1].type == TokenType.OP and tokens[i +1].lexeme == OP_SET.SUB.symbol:
-                    r_value, i = negateValue(tokens, i +1)
+            elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
+                singleton_value_element, i = processAnonFunc(tokens, i)
+            
+            else:
+                syntaxError(f"A value is required after this `{parent_token}`, found this instead `{token}`", parent_token)
+            
+            assert isValueElement(singleton_value_element) and (type(singleton_value_element) != Node or singleton_value_element.type != NodeType.OP), f"UNREACHABLE" # OCD
+            return (singleton_value_element, i)
+        
+        def appendOP (root_op_node: Node, op: Token, r_value: Token | Node) -> Node:
+            '''Adds the `op` to the tree of ops according to the precedence of its content
+            and returns the new root node of the ops' tree\n
+            The process of appending goes as follows:\n
+            \tIf the `root_op_node`'s precedence is greater than or equal to `op` => It is `op`'s l_value\n
+            \tOtherwise => The `op` is the `root_op_node` new r_value, and its old r_value is the `op`'s l_value (treating
+            the r_value in a recursive fashion)\n
+            '''
+            assert root_op_node.type == NodeType.OP, f"The root_node is not a Node.OP"
+            assert op.type == TokenType.OP, f"The op is not an op token"
+            assert isValueElement(r_value), f"Passed an r_value that does not produce value"
+            
+            if OP_SET.fromSymbol(root_op_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
+                return Node(NodeType.OP, op=op, l_value=root_op_node, r_value=r_value)
+            else:
+                root_op_r_value = root_op_node.components['r_value']
+                root_op_new_r_value = None
+                if type(root_op_r_value) == Node and root_op_r_value.type == NodeType.OP:
+                    root_op_new_r_value = appendOP(root_op_r_value, op, r_value)
                 else:
-                    syntaxError(f"This operation `{token}` requires a value after it, not this `{tokens[i +1]}`", tokens[i +1])
-                if type(buffer[0]) == Node and buffer[0].type == NodeType.OP: # If an op is the previous value then append
-                    buffer[0] = appendOP(buffer[0], token, r_value)
+                    root_op_new_r_value = Node(NodeType.OP, op=op, l_value=root_op_r_value, r_value=r_value)
+                root_op_node.components['r_value'] = root_op_new_r_value
+                return root_op_node
+        
+        i = start_index # Just for ease of reference
+        buffer = []
+        value, i = nextSingletonValue(tokens, parent_token, i)
+        buffer.append(value)
+        
+        while i < len(tokens): # Append Node.OPs if there is something left
+            token = tokens[i]
+            tokenType = token.type
+            
+            if tokenType == TokenType.OP: # Node.OP
+                l_value = buffer[0]
+                r_value, i = nextSingletonValue(tokens, token, i +1)
+                if l_value == Node and l_value.type == NodeType.OP: # If an op is the previous value then append
+                    buffer[0] = appendOP(l_value, token, r_value)
                 else: # Otherwise create one
-                    buffer[0] = Node(NodeType.OP, op=token, l_value=buffer[0], r_value=r_value)
+                    buffer[0] = Node(NodeType.OP, op=token, l_value=l_value, r_value=r_value)
             
             elif tokenType == TokenType.EOL:
-                assert skip_eols is not None, f"Who gave you None?"
                 if skip_eols:
                     i += 1
                 else:
                     break
             
-            elif tokenType == TokenType.COMMA: # End of arg for Node.FUNC_CALL
-                break
+            elif tokenType == TokenType.COMMA:
+                if accepts_comas:
+                    break
+                else:
+                    syntaxError(f"This comma can't be here", token)
             
-            elif tokenType == TokenType.CLOSE_PAREN:
-                syntaxError(f"You forgot the opening parenthesis for this one", token)
+            elif tokenType == TokenType.SEMICOLON:
+                if accepts_semicolons:
+                    break
+                else:
+                    syntaxError(f"This semicolon can't be here", token)
             
             else:
-                syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It shouldn't be there", token)
-        
+                syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It can't be there", token)
+            
         if len(buffer) != 1 or not isValueElement(buffer[0]):
-            if len(buffer) == 0:
-                syntaxError(f"Expected some sort of expression after this", tokens[parent_token_index])
-            elif len(buffer) == 1:
-                assert False, f"Buffer has a none value element: {buffer[0]}"
-                # raise Exception(f"SYNTAX ERROR: Can't assign this `{buffer[0]}` to this variable `{token}`.\n{token.location()}")
-            else:
-                assert False, f"Buffer contains more than 1 element: {buffer}"
+            assert False, f"Buffer has a none value element: {buffer}"
         return (buffer[0], i)
     
     def processFuncCall (tokens: list[Token], func: Token, open_paren_index: int) -> tuple[Node, int]:
