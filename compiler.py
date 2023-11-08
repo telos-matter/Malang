@@ -1,11 +1,12 @@
-from enum import Enum, auto
 from core import OP_SET, Instruction
+from enum import Enum, auto
 from numbers import Number
+
 
 class TokenType (Enum):
     NUMBER      = auto() # Any number
     OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
-    EOL         = auto() # End of a line (Could also be an EOF)
+    EOL         = auto() # End of a line
     OPEN_PAREN  = auto() # Opening parenthesis `(`
     CLOSE_PAREN = auto() # Closing parenthesis `)`
     IDENTIFIER  = auto() # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
@@ -14,10 +15,13 @@ class TokenType (Enum):
     OPEN_CURLY  = auto() # Opening curly brackets `{`
     CLOSE_CURLY = auto() # Closing curly brackets `}`
     COMMA       = auto() # The `,` that separates the params and args
+    SEMICOLON   = auto() # `;` to end expressions (not required)
+    BOC         = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
+    EOC         = auto() # End of Content # This one is not used really
 
 class Token ():
     def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
-        '''`line`: the line in which this Token exists\n
+        '''`line`: the actual line, the string in which this Token exists\n
         `span`: the length of the Token in the line\n
         `synthesized`: refers to whether the token was created by the compiler, for example -foo => (-1 * foo)
         '''
@@ -48,159 +52,209 @@ class Token ():
         return self.type in [TokenType.IDENTIFIER, TokenType.NUMBER]
     
     def __eq__(self, other: object) -> bool:
+        '''Two Tokens are equal if they are of the same `type` and
+        have the same `lexeme`. Location is ignored'''
         if isinstance(other, self.__class__):
             return self.type == other.type and self.lexeme == other.lexeme
         else:
             return False
     
     def __hash__(self) -> int:
+        '''Hash based on the `type` and the `lexeme`'''
         return hash((self.type, self.lexeme))
     
     def __repr__(self) -> str:
         return str(self.lexeme)
 
-def parseSourceFile (content: str, filePath: str) -> list[Token]:
+def parseSourceFile (file_path: str) -> list[Token]:
     '''Takes a source file and parses its content to tokens
     Does not check for structure validity,
-    only checks for content correctness'''
+    only checks for content correctness\n
+    Also handles includes'''
     
     def parsingError (message: str, temp_token: Token) -> None:
         '''Raises a parsing error exception'''
-        message = "PARSING ERROR: " +message +f"\n{temp_token.pointOut()}\n{temp_token.location()}"
+        message = "❌ PARSING ERROR: " +message +f"\n{temp_token.pointOut()}\n{temp_token.location()}"
         raise Exception(message)
     
-    NUMBER_PERIOD = '.'
-    tokens = []
+    def readContent (file_path: str) -> str:
+        '''Reads the content of a file\n
+        If the file is empty it would return an empty str'''
+        with open(file_path, 'r') as f:
+            return f.read()
     
-    for line_index, line in enumerate(content.splitlines()):
-        i = 0
-        while i < len(line):
-            char = line[i]
-            
-            if char in OP_SET.getSymbols():
-                if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.IDIV.symbol[1]:
-                    char = line[i : i +2]
-                tokens.append(Token(TokenType.OP, char,line, len(char), filePath, line_index, i))
-                i += len(char)
-            
-            elif char.isdigit():
-                number = char
-                j = i +1
-                while j < len(line) and (line[j].isdigit() or line[j] == NUMBER_PERIOD):
-                    number += line[j]
-                    j += 1
-                try:
-                    number = float(number)
-                    if int(number) == number:
-                        number = int(number)
-                except ValueError:
-                    temp_token = Token(None, number, line, j -i, filePath, line_index, i)
-                    parsingError(f"Couldn't parse this number: `{number}`", temp_token)
-                tokens.append(Token(TokenType.NUMBER, number, line, j -i, filePath, line_index, i))
-                i = j
-            
-            elif char == '(':
-                tokens.append(Token(TokenType.OPEN_PAREN, char, line, len(char), filePath, line_index, i))
-                i += 1
-            
-            elif char == ')':
-                tokens.append(Token(TokenType.CLOSE_PAREN, char, line, len(char), filePath, line_index, i))
-                i += 1
-            
-            elif char == '_' or char.isalpha(): # Identifier or keyword
-                identifier = char
-                j = i +1
-                while j < len(line) and (line[j].isalpha() or line[j].isdigit() or line[j] == '_'):
-                    identifier += line[j]
-                    j += 1
-                if identifier == 'def':
-                    tokens.append(Token(TokenType.DEF_KW, identifier, line, j -i, filePath, line_index, i))
-                else:
-                    tokens.append(Token(TokenType.IDENTIFIER, identifier, line, j -i, filePath, line_index, i))
-                i = j
-            
-            elif char == '{':
-                tokens.append(Token(TokenType.OPEN_CURLY, char, line, len(char), filePath, line_index, i))
-                i += 1
-            
-            elif char == '}':
-                tokens.append(Token(TokenType.CLOSE_CURLY, char, line, len(char), filePath, line_index, i))
-                i += 1
-            
-            elif char == '=':
-                tokens.append(Token(TokenType.ASSIGN_OP, char, line, len(char), filePath, line_index, i))
-                i += 1
-            
-            elif char == ',':
-                tokens.append(Token(TokenType.COMMA, char, line, len(char), filePath, line_index, i))
-                i += 1
-            
-            elif char == '#':
-                # A line comment, go to the next line
-                break
-            
-            elif char.isspace():
-                i += 1
-            
-            else:
-                temp_token = Token(None, char, line, len(char), filePath, line_index, i)
-                parsingError(f"Unexpected char: `{char}`", temp_token)
+    NUMBER_PERIOD = '.' # 3.14
+    NUMBER_SEP    = '_' # 100_00
+    
+    def parse (file_path: str, main: bool) -> list[Token]:
+        '''The functions that actually parses the file\n
+        `main` specifies whether this is the main file being
+        parsed to know whether or not to include the BOC and EOC
+        tokens'''
         
-        tokens.append(Token(TokenType.EOL, '\n', line, 1, filePath, line_index, len(line))) # Fuck Windows' new lines
+        content = readContent(file_path).splitlines() # Returns an empty list in case of empty content
+        tokens = []
+        
+        if main:
+            line = '' if len(content) == 0 else content[0]
+            tokens.append(Token(TokenType.BOC, None, line, 0, file_path, 0, 0))
+        
+        for line_index, line in enumerate(content):
+            i = 0
+            while i < len(line):
+                char = line[i]
+                
+                if char in OP_SET.getSymbols():
+                    if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.IDIV.symbol[1]: # Handles `//`
+                        char = line[i : i +2]
+                    tokens.append(Token(TokenType.OP, char, line, len(char), file_path, line_index, i))
+                    i += len(char)
+                
+                elif char.isdigit() or (char == '-' and i +1 < len(line) and line[i +1].isdigit()): # Handles negative numbers too
+                    number = char
+                    j = i +1
+                    while j < len(line) and (line[j].isdigit() or line[j] == NUMBER_PERIOD or line[j] == NUMBER_SEP):
+                        number += line[j]
+                        j += 1
+                    try:
+                        number = float(number)
+                        if int(number) == number:
+                            number = int(number)
+                    except ValueError:
+                        temp_token = Token(None, number, line, j -i, file_path, line_index, i)
+                        parsingError(f"Couldn't parse this number: `{number}`", temp_token)
+                    tokens.append(Token(TokenType.NUMBER, number, line, j -i, file_path, line_index, i))
+                    i = j
+                
+                elif char == '(':
+                    tokens.append(Token(TokenType.OPEN_PAREN, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == ')':
+                    tokens.append(Token(TokenType.CLOSE_PAREN, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == '_' or char.isalpha(): # An identifier, a keyword or include
+                    identifier = char
+                    j = i +1
+                    while j < len(line) and (line[j].isalpha() or line[j].isdigit() or line[j] == '_'):
+                        identifier += line[j]
+                        j += 1
+                    
+                    tokenType = None
+                    if identifier == 'def':
+                        tokenType = TokenType.DEF_KW
+                    elif identifier == 'include':
+                        tokens.extend(parse(line[j:], False))
+                        break
+                    else:
+                        tokenType = TokenType.IDENTIFIER
+                    
+                    tokens.append(Token(tokenType, identifier, line, j -i, file_path, line_index, i))
+                    i = j
+                
+                elif char == '{':
+                    tokens.append(Token(TokenType.OPEN_CURLY, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == '}':
+                    tokens.append(Token(TokenType.CLOSE_CURLY, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == '=':
+                    tokens.append(Token(TokenType.ASSIGN_OP, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == ',':
+                    tokens.append(Token(TokenType.COMMA, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == ';':
+                    tokens.append(Token(TokenType.SEMICOLON, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == '#':
+                    # A line comment, go to the next line
+                    break
+                
+                elif char.isspace():
+                    i += 1
+                
+                else:
+                    temp_token = Token(None, char, line, len(char), file_path, line_index, i)
+                    parsingError(f"Unexpected char: `{char}`", temp_token)
+            
+            tokens.append(Token(TokenType.EOL, '\n', line, 1, file_path, line_index, len(line))) # Fuck Windows' new lines
+        
+        if main:
+            line = '' if len(content) == 0 else content[-1]
+            tokens.append(Token(TokenType.EOC, None, line, 0, file_path, len(content), len(line)))
+        
+        return tokens
     
-    return tokens
+    return parse(file_path, True)
 
 
 class NodeType (Enum):
+    ROOT        = auto() # Root node of the content. Will only contain instruction nodes. Only 1 exists.
     VAR_ASSIGN  = auto() # Assigning to a variable
     OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
     ORDER_PAREN = auto() # Order parenthesis. They can only contain a value element
     FUNC_DEF    = auto() # Function definition. Can have nested functions. Functions overloading is allowed
     FUNC_CALL   = auto() # Function call
+    ANON_FUNC   = auto() # Anonymous function
 
 class Node():
     def __init__(self, nodeType: NodeType, **components) -> None:
         ''' The components that each nodeType has:\n
-        `VAR_ASSIGN`:
-            var: an identifier token representing the variable getting assigned to
-            value: a value element representing the assigned value
-        `OP`:
-            op: the op token representing the operation being performed
-            l_value: a value element representing the left value of the operation
-            r_value: a value element representing the right value of the operation
-        `ORDER_PAREN`:
-            value: a value element representing their content
-        `FUNC_DEF`:
-            func: an identifier token representing the function being defined
-            params: a list of identifier tokens representing the parameters
-            body: a list of nodes (another AST) representing the body of the function. It
+        - `ROOT`:
+            - `boc`: the beginning of content Token
+            - `content`: a list of the instruction nodes
+            - `eoc`: the end of content Token
+        - `VAR_ASSIGN`:
+            - `var`: an identifier token representing the variable getting assigned to
+            - `value`: a value element representing the assigned value
+        - `OP`:
+            - `op`: the op token representing the operation being performed
+            - `l_value`: a value element representing the left value of the operation
+            - `r_value`: a value element representing the right value of the operation
+        - `ORDER_PAREN`:
+            - `value`: a value element representing their content
+        - `FUNC_DEF`:
+            - `func`: an identifier token representing the function being defined
+            - `params`: a list of identifier tokens representing the parameters
+            - `body`: a list of nodes (another AST, but without the root node) 
+            representing the body of the function. It
             can contain any other node, including another Node.FUNC_DEF
-        `FUNC_CALL`:
-            func: an identifier token representing the function being called
-            args: a list of value elements representing the arguments
-        \n
-        A value element means a Token or a Node that can return or is a value, which
-        is any
-        of these: Token.NUMBER, Token.IDENTIFIER, Node.OP, Node.ORDER_PAREN or
-        Node.FUNC_CALL
+        - `FUNC_CALL`:
+            - `func`: an identifier token representing the function being called
+            - `args`: a list of value elements representing the arguments
+        - `ANON_FUNC`:
+            - `opener`: an open curly bracket representing the start of the anonymous function
+            - `body`: a list of nodes (another AST, but without the root node) 
+            representing the body of the anonymous function. It
+            can contain any other node, including another Node.ANON_FUNC
         '''
         self.type = nodeType
         self.components = components
     
     def isValueNode (self) -> bool:
         '''Whether this Node is a value element node or not'''
-        return self.type in [NodeType.OP, NodeType.ORDER_PAREN ,NodeType.FUNC_CALL]
+        return self.type in [NodeType.OP, NodeType.ORDER_PAREN, NodeType.FUNC_CALL, NodeType.ANON_FUNC]
     
     def isInstructionNode (self) -> bool:
         '''Whether this Node is an instruction node or not\n
-        Instruction nodes are the Nodes contained in the AST.'''
-        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_CALL, NodeType.FUNC_DEF]
+        Instruction nodes are the only Nodes that can start new instructions'''
+        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_CALL, NodeType.FUNC_DEF, NodeType.ANON_FUNC]
     
     def __repr__(self) -> str:
         return f"{self.type}\n\t=> {self.components}"
 
 def isValueElement (element: Token | Node) -> bool:
-    '''Checks if the element is a value element'''
+    '''Checks if the element is a value element\n
+    A value element means a Token or a Node that can return
+    or is a value.'''
+    
     if type(element) == Token:
         return element.isValueToken()
     elif type(element) == Node:
@@ -208,58 +262,27 @@ def isValueElement (element: Token | Node) -> bool:
     else:
         assert False, f"Passed something other than Token or Node, {element}"
 
-# TODO have some sort of function that returns the immediate next value
-def constructAST (tokens: list[Token]) -> list[Node]:
-    '''Takes tokens and construct a list of nodes representing their ast
-    , which would only contain one of these nodes:
-    Node.VAR_ASSIGN, Node.FUNC_DEF or Node.FUNC_CALL\n
+def constructAST (tokens: list[Token]) -> Node:
+    '''Takes tokens and returns a root node\n
     Does not check for the validity of the
-    code (referencing a none existing variable for example or recursion),
-    only checks for validity of the structure / syntax'''
+    code  like referencing a none existing variable or function,
+    only checks the validity of the structure / syntax'''
     
     def syntaxError (message: str, token: Token) -> None:
         '''Raises a syntax error exception'''
-        message = "SYNTAX ERROR: " +message +f"\n{token.pointOut()}\n{token.location()}"
+        message = "❌ SYNTAX ERROR: " +message +f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
     
-    def appendOP (root_node: Node, op: Token, r_value: Token | Node) -> Node:
-        '''Adds the `op` to the tree according to the precedence of its content
-        and returns the new root node\n
-        The process of appending goes as follows:\n
-        \tIf the root_nodes' precedence is greater than or equal to mine => It is my l_value\n
-        \tOtherwise => Im its new r_value, and its old r_value is my l_value (treating
-        the r_value in a recursive fashion)\n
-        '''
-        assert root_node.type == NodeType.OP, f"The root_node is not a Node.OP"
-        assert op.type == TokenType.OP, f"The op is not an op token"
-        assert isValueElement(r_value), f"Passed an r_value that does not produce value"
-        
-        if OP_SET.fromSymbol(root_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
-            return Node(NodeType.OP, op=op, l_value=root_node, r_value=r_value)
-        else:
-            root_r_value = root_node.components['r_value']
-            new_r_value = None
-            if type(root_r_value) == Node and root_r_value.type == NodeType.OP:
-                new_r_value = appendOP(root_r_value, op, r_value)
-            else:
-                new_r_value = Node(NodeType.OP, op=op, l_value=root_r_value, r_value=r_value)
-            root_node.components['r_value'] = new_r_value
-            return root_node
-    
-    def findToken (tokens: list[Token], tokenType: TokenType, search_from: int) -> int | None:
-        '''Looks for a Token starting from `search_from`'''
-        while search_from < len(tokens):
-            if tokens[search_from].type == tokenType:
-                return search_from
-            search_from += 1
-        return None
-    
-    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int, required: Token=None) -> int | None:
-        '''Returns the index of the enclosing token starting from `search_from`
+    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int, required: Token) -> int | None:
+        '''Returns the index of the enclosing token starting from `search_from`.
         This handles nested tokens such as ((())) for example\n
-        `required` should have the opening token
+        `tokens`: normally, a list of all the tokens
+        `required`: should have the opening token, the
+        one whose enclosing token you want to find,
         if you want this function to raise a SyntaxError if 
-        the closing element was not found'''
+        its closing token was not found. Or `None` if you
+        don't care if it's not found'''
+        
         depth = 1
         while search_from < len(tokens):
             tokenType = tokens[search_from].type
@@ -267,41 +290,74 @@ def constructAST (tokens: list[Token]) -> list[Node]:
                 depth += 1
             elif tokenType == enclosing_tokenType:
                 depth -= 1
-            if depth == 0:
-                return search_from
+                if depth == 0:
+                    return search_from
             search_from += 1
         if required is not None:
-            syntaxError(f"The closing element for this one is missing.", required)
+            syntaxError(f"The enclosing element for this one is missing.", required)
         return None
     
-    def isNextToken (tokens: list[Token], tokenType: TokenType, start_from: int) -> int | None:
-        '''Checks if the token, from `start_from`, is `tokenType`, while skipping over
-        Token.EOLs. If it is return its index, otherwise None'''
+    def isNextToken (tokens: list[Token], tokenType: TokenType, start_from: int, required: tuple[str, Token]) -> int | None:
+        '''Checks if the next token, from `start_from`, is `tokenType`, while skipping over
+        Token.EOLs. If it is return its index, otherwise `None`\n
+        `required`: if it's required that the next token be `tokenType`
+        then this should be a tuple containing a message as well
+        as a token to raise a SyntaxError exception with. If it's
+        not required then give it `None`'''
+        
         while start_from < len(tokens):
             if tokens[start_from].type == tokenType:
                 return start_from
             elif tokens[start_from].type == TokenType.EOL:
                 start_from += 1
             else:
-                return None
-        return None
+                break
+        if required is not None:
+            syntaxError(*required)
+        else:
+            return None
     
-    def processValueExpression (tokens: list[Token], parent_token_index: int, skip_eols: bool) -> tuple[Node | Token, int]:
-        '''Called to process a value expression and return a value element representing it\n
-        It would for example process whatever is in between parenthesis,
-        function args or a variable assignment. And returns where to continue\n
-        It process/parses whatever
-        it has as long as it can be in a single value expression\n
-        `tokens` is the list of the actual tokens\n
-        `parent_token_index` is the index
-        of token that wants to process this value expression, we
-        start right after it\n
-        `skip_eols` tells it whether it should halt if it encounters
-        a new line (useful when the ones who wants to process are
-        parenthesis)'''
+    def processValueExpression (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool, accepts_semicolons: bool, accepts_comas: bool) -> tuple[Node | Token, int]:
+        '''Processes a value expression and return a value element
+        representing it as well as from where to continue\n
+        The location and what terminates a value expression can vary, so
+        the parameters specify how to handle it\n
+        `tokens`: normally, the list of all the tokens\n
+        `parent_token`: the token that "wants" this value expression. To raise a SyntaxError with in case of an error\n
+        `start_index`: from where to start processing\n
+        `skip_eols`: skip EOLs or terminate when encountered\n
+        `accepts_semicolons`: can a semicolon terminate this value expression?\n
+        `accepts_comas`: can a coma terminate this value expression?\n'''
         
-        # FIXME -5^2 should be -25 not 25, maybe just remove parenthesis
+        def nextValue (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool, accepts_semicolons: bool, accepts_comas: bool) -> tuple[Node | Token, int]:
+            pass
+        
+        def appendOP (root_node: Node, op: Token, r_value: Token | Node) -> Node:
+            '''Adds the `op` to the tree according to the precedence of its content
+            and returns the new root node\n
+            The process of appending goes as follows:\n
+            \tIf the root_nodes' precedence is greater than or equal to mine => It is my l_value\n
+            \tOtherwise => Im its new r_value, and its old r_value is my l_value (treating
+            the r_value in a recursive fashion)\n
+            '''
+            assert root_node.type == NodeType.OP, f"The root_node is not a Node.OP"
+            assert op.type == TokenType.OP, f"The op is not an op token"
+            assert isValueElement(r_value), f"Passed an r_value that does not produce value"
+            
+            if OP_SET.fromSymbol(root_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
+                return Node(NodeType.OP, op=op, l_value=root_node, r_value=r_value)
+            else:
+                root_r_value = root_node.components['r_value']
+                new_r_value = None
+                if type(root_r_value) == Node and root_r_value.type == NodeType.OP:
+                    new_r_value = appendOP(root_r_value, op, r_value)
+                else:
+                    new_r_value = Node(NodeType.OP, op=op, l_value=root_r_value, r_value=r_value)
+                root_node.components['r_value'] = new_r_value
+                return root_node
+        
         def negateValue(tokens: list[Token], negate_token_index: int) -> tuple[Token | Node, int]:
+            # FIXME -5^2 should be -25 not 25, maybe just remove parenthesis
             '''Negates the value element after the negate token
             at `negate_token_index`. Returns the negated value element and
             the index at which to continue'''
@@ -346,6 +402,8 @@ def constructAST (tokens: list[Token]) -> list[Node]:
             value, _ = processValueExpression(tokens[open_paren : close_paren], 0, True)
             node = Node(NodeType.ORDER_PAREN, value=value)
             return (node, close_paren +1)
+        
+        #TODO function that returns immediate next value
         
         buffer = []
         i = parent_token_index +1
@@ -442,103 +500,137 @@ def constructAST (tokens: list[Token]) -> list[Node]:
     def processFuncCall (tokens: list[Token], func: Token, open_paren_index: int) -> tuple[Node, int]:
         '''Processes a function call and returns a Node.FUNC_CALL
         and the index at which to continue, which is where the function
-        call ends +1'''
-        i = open_paren_index # Ease of reference
+        call ends +1\n
+        `tokens`: normally, a list of all the tokens\n
+        `func`: a Node.IDENTIFIER representing the function being called\n
+        `open_paren_index`: where the function call starts'''
+        i = open_paren_index # Just for ease of reference
         assert func.type == TokenType.IDENTIFIER, f"Not Token.IDENTIFIER"
         assert tokens[i].type == TokenType.OPEN_PAREN, f"Not Token.OPEN_PAREN"
         
-        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, tokens[i])
+        i += 1
+        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i, tokens[i -1])
         args = []
-        if isNextToken(tokens, TokenType.CLOSE_PAREN, i +1) is None: # If it has some args
+        if isNextToken(tokens, TokenType.CLOSE_PAREN, i, None) is None: # If it has some args
             args_tokens = tokens[i : close_paren]
             inc = 0
             while i +inc < close_paren:
-                arg, inc = processValueExpression(args_tokens, inc, True)
+                parent_token = tokens[i +inc -1] if inc == 0 else tokens[i +inc] # First the `(` then the `,`s
+                arg, inc = processValueExpression(args_tokens, parent_token, inc, True, False, True)
                 if i +inc < close_paren:
-                    assert tokens[i +inc].type == TokenType.COMMA, f"Not sure if this should be an assert or Syntax Error" # I think rn it should be assert, cuz the only thing that should exit it is the comma
+                    assert tokens[i +inc].type == TokenType.COMMA, f"It should only exit if it encountered a comma. Exited on {tokens[i +inc]}"
                 args.append(arg)
         return (Node(NodeType.FUNC_CALL, func=func, args=args), close_paren +1)
     
-    ast = []
-    i = 0
-    while i < len(tokens):
-        token = tokens[i]
-        tokenType = token.type
+    def processAnonFunc (tokens: list[Token], open_curly_index: int) -> tuple[Node, int]:
+        '''Processes an anonymous function and returns a Node.ANON_FUNC
+        and the index at which to continue, which is where the anonymous
+        function ends +1\n
+        `tokens`: normally, a list of all the tokens\n
+        `open_curly_index`: the anonymous function starter'''
+        i = open_curly_index # Just for ease of reference
+        assert tokens[i].type == TokenType.OPEN_CURLY, f"Not Token.OPEN_CURLY"
         
-        if tokenType == TokenType.IDENTIFIER: # Node.VAR_ASSIGN or Node.FUNC_CALL
-            if len(tokens) <= i +1:
-                syntaxError(f"Expected something after this identifier", token)
-            i += 1
-            if tokens[i].type == TokenType.ASSIGN_OP: # Node.VAR_ASSIGN
-                value, i = processValueExpression(tokens, i, False)
-                ast.append(Node(NodeType.VAR_ASSIGN, var=token, value=value))
+        close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, i +1, tokens[i])
+        body = construct(tokens[i +1 : close_curly], False)
+        return (Node(NodeType.ANON_FUNC, opener=tokens[i], body=body), close_curly +1)
+    
+    def construct (tokens: list[Token], root: bool) -> Node | list[Node]:
+        '''The actual function that constructs
+        the AST\n
+        `root`: signifies whether this AST that is being constructed
+        is the main content AST or not, to know whether to
+        return a root node or a list of instruction nodes'''
+        
+        if root:
+            assert tokens[0].type == TokenType.BOC, f"Not Token.BOC {tokens[0]}"
+            assert tokens[-1].type == TokenType.EOC, f"Not Token.EOC {tokens[-1]}"
+            BOC_TOKEN = tokens[0] # Leave them here so that it would raise an undefined error later on if we try to access them when we shouldn't. An assertion
+            EOC_TOKEN = tokens[-1]
+            tokens = tokens[1 : -1]
+        
+        content = []
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+            tokenType = token.type
             
-            elif tokens[i].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
-                func_call, i = processFuncCall(tokens, token, i)
-                ast.append(func_call)
+            if tokenType == TokenType.IDENTIFIER: # Node.VAR_ASSIGN or Node.FUNC_CALL
+                if len(tokens) <= i +1:
+                    syntaxError(f"Expected something after this identifier", token)
+                i += 1
+                if tokens[i].type == TokenType.ASSIGN_OP: # Node.VAR_ASSIGN
+                    value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
+                    content.append(Node(NodeType.VAR_ASSIGN, var=token, value=value))
+                
+                elif tokens[i].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                    func_call, i = processFuncCall(tokens, token, i)
+                    content.append(func_call)
+                
+                else:
+                    syntaxError(f"Was not expecting this after an identifier", tokens[i])
+            
+            elif tokenType == TokenType.DEF_KW: # Node.FUNC_DEF:
+                i += 1
+                if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
+                    syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{token}` keyword", token)
+                func = tokens[i]
+                i += 1
+                if len(tokens) <= i or tokens[i].type != TokenType.OPEN_PAREN:
+                    syntaxError(f"There should be an open parenthesis right after the function's name to define this function's parameters", tokens[i])
+                i += 1
+                close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i, tokens[i -1])
+                params = []
+                last_token_was_comma = True # True just to init
+                while i < close_paren:
+                    if tokens[i].type == TokenType.EOL:
+                        i += 1
+                    elif tokens[i].type == TokenType.COMMA:
+                        if last_token_was_comma:
+                            message = f"Expected a parameter's name to start with, not a comma" if len(params) == 0 else f"Two consecutive commas. A parameter is missing"
+                            syntaxError(message, tokens[i])
+                        else:
+                            last_token_was_comma = True
+                            i += 1
+                    elif tokens[i].type == TokenType.IDENTIFIER:
+                        if last_token_was_comma:
+                            params.append(tokens[i])
+                            last_token_was_comma = False
+                            i += 1
+                        else:
+                            syntaxError(f"Two consecutive parameters. A comma is missing", tokens[i])
+                    else:
+                        message = f"Expected a parameters' name, not this:" if last_token_was_comma else f"Expected a comma to separate the parameters, not this:"
+                        syntaxError(message, tokens[i])
+                if len(params) != 0 and last_token_was_comma:
+                    syntaxError(f"There is an extra comma before this closing parenthesis, remove it", tokens[i])
+                open_curly = isNextToken(tokens, TokenType.OPEN_CURLY, i +1, (f"Couldn't find an open curly bracket to start the body of the function after this:", tokens[i]))
+                close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, open_curly +1, tokens[open_curly])
+                body = construct(tokens[open_curly +1 : close_curly], False)
+                content.append(Node(NodeType.FUNC_DEF, func=func, params=params, body=body))
+                i = close_curly +1
+            
+            elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
+                anon_func, i = processAnonFunc(tokens, i)
+                content.append(anon_func)
+            
+            elif tokenType in [TokenType.EOL, TokenType.SEMICOLON]: # Skip
+                i += 1
+            
+            elif tokenType in [TokenType.BOC, TokenType.EOC]: # Unreachable because they are removed from the list
+                assert False, f"Unreachable"
             
             else:
-                syntaxError(f"Was not expecting this after an identifier", tokens[i])
+                syntaxError(f"This `{token}` cannot start a new instruction", token)
         
-        elif tokenType == TokenType.DEF_KW: # Node.FUNC_DEF:
-            i += 1
-            if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
-                syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{token}` keyword", token)
-            func = tokens[i]
-            i += 1
-            if len(tokens) <= i or tokens[i].type != TokenType.OPEN_PAREN:
-                syntaxError(f"There should be an open parenthesis right after the function's name that starts the definition of this function parameters", tokens[i])
-            i += 1
-            close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i)
-            if close_paren == None:
-                syntaxError(f"The closing parenthesis for the function's parameters is missing", tokens[i +2])
-            params = []
-            last_thing_was_comma = True
-            while i < close_paren:
-                if tokens[i].type == TokenType.EOL:
-                    i += 1
-                elif tokens[i].type == TokenType.COMMA:
-                    if last_thing_was_comma:
-                        if len(params) == 0:
-                            syntaxError(f"Expected a parameter's name to start with, not a comma", tokens[i])
-                        else:
-                            syntaxError(f"Two consecutive commas", tokens[i])
-                    else:
-                        last_thing_was_comma = True
-                        i += 1
-                elif tokens[i].type == TokenType.IDENTIFIER:
-                    if last_thing_was_comma:
-                        params.append(tokens[i])
-                        last_thing_was_comma = False
-                        i += 1
-                    else:
-                        syntaxError(f"Two consecutive parameters", tokens[i])
-                else:
-                    if last_thing_was_comma:
-                        syntaxError(f"Expected an identifier representing the name of a parameter, not this.", tokens[i])
-                    else:
-                        syntaxError(f"Expected a comma to separate the parameters, not this.", tokens[i])
-            if len(params) != 0 and last_thing_was_comma:
-                syntaxError(f"There is an extra comma before this closing parenthesis, remove it", tokens[i])
-            open_curly = isNextToken(tokens, TokenType.OPEN_CURLY, i +1)
-            if open_curly is None:
-                syntaxError(f"Couldn't find an open curly bracket to start the body of the function after this", tokens[i])
-            close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, open_curly +1)
-            if close_curly is None:
-                syntaxError(f"This open curly bracket is missing its closing one", tokens[open_curly])
-            body = constructAST(tokens[open_curly +1 : close_curly])
-            ast.append(Node(NodeType.FUNC_DEF, func=func, params=params, body=body))
-            i = close_curly +1
-        
-        elif tokenType == TokenType.EOL: # Skip
-            i += 1
-        
+        for node in content:
+            assert node.isInstructionNode(), f"Content has something other than an instruction node {node}"
+        if root:
+            return Node(NodeType.ROOT, boc=BOC_TOKEN, content=content, eoc=EOC_TOKEN)
         else:
-            syntaxError(f"This `{token}` cannot start a new instruction", token)
+            return content
     
-    for node in ast:
-        assert node.isInstructionNode(), f"AST contains something other than an instruction node"
-    return ast
+    return construct(tokens, True)
 
 
 RETURN_VAR_NAME = 'res'
@@ -551,10 +643,9 @@ def validateAST (ast: list[Node]) -> None:
     are sequential)'''
     
     def invalidCode (message: str, token: Token) -> None:
-        print(f'HERE {type(token)}, {token}') # TODO remove line
-        '''Raises an invalid code exception'''
-        message = "INVALID CODE: " +message
-        if token is not None:
+        '''Raises an invalid code exception.'''
+        message = "❌ INVALID CODE: " +message
+        if token is not None: # TODO??? why is it like so? just add it normally. dont have any case where its none
             message += f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
     
@@ -671,7 +762,7 @@ def validateAST (ast: list[Node]) -> None:
 
 
 def constructProgram (ast: list[Node]) -> Instruction:
-    '''Constructs the program from a valid AST, translates
+    '''Constructs the program from a valid AST. Translates
     Nodes into Instructions'''
     
     def setValueInstruction(value: Number) -> Instruction:
@@ -737,31 +828,30 @@ def constructProgram (ast: list[Node]) -> Instruction:
     return return_value
 
 
-def runSourceFile (filePath: str) -> None:
+def runSourceFile (file_path: str) -> None:
     '''Compiles and runs a source file'''
     
     DEBUG = True
     
-    content = None
-    with open(filePath, 'r') as f:
-        content = f.read()
-    
-    tokens = parseSourceFile(content, filePath)
+    tokens = parseSourceFile(file_path)
     if DEBUG:
+        print('✅ Parsing')
         print("Tokens:\n", tokens)
     
     ast = constructAST(tokens)
     if DEBUG:
+        print('✅ Constructing the AST')
         print("AST:\n")
         for node in ast:
             print("-", node)
     
     validateAST(ast)
     if DEBUG:
-        print('AST is valid')
+        print('✅ AST is valid')
     
     program = constructProgram(ast)
     if DEBUG:
+        print('✅ Constructing the program')
         print("Program:", program, sep='\n')
     
     program.runProgram()

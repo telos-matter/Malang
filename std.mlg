@@ -1,4 +1,8 @@
 # # This is the old file, make it the std import thing
+# TODO later on add TRUE and FALSE as syntactic sugar for 1 and 0
+# TODO add todo highlight and fixme highlight
+
+
 
 # def lol (m) {
 #     pass

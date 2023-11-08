@@ -1,0 +1,29 @@
+foo = 5;
+foo = 3
+
+def 
+bar 
+(
+
+) 
+{
+
+}
+
+def baz (a) {
+
+}
+
+# comment
+
+
+
+def and (a, b) {
+    
+}
+
+
+foo = 0
+foo = {res = foo +1} # anonymous functions
+
+res = and(1,0)

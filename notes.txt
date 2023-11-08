@@ -3,3 +3,6 @@
 
 
 - Keep in mind (that in order to keep stuff mathematically correct) when using the _if statement you can't just put whatever in the else part, like div by zero
+
+
+- Don't forget syntax in vscode extensions

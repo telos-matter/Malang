@@ -17,3 +17,8 @@ A function is only defined when it hits the }
 Ofc no recursion and can only call functions above you
 
 You can define functions inside functions with same name? idk
+
+File includes are literally just includes, it is as if you took that file and pasted it there
+
+
+Anonymous functions are block of code that are executed and have their own scope with their own res, is a value element and an instruction node
