@@ -1,6 +1,11 @@
 
 def foo () {
+
     res = 6
 }
 
-res = foo()
+def foo (bruh) {
+    res = 10 + bruh
+}
+
+res = foo(2)
