@@ -688,7 +688,7 @@ def constructProgram (ast: Node) -> Instruction:
             '''Adds a Node.FUNC_DEF to the scope if it doesn't
             already exist, otherwise InvalidCode exception'''
             assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
-            exists = self.__funcExists(func_def.components['func'])
+            exists = self.__funcExists(func_def.components['func'], len(func_def.components['params']))
             if exists is None:
                 self.funcs.append(func_def)
             else:

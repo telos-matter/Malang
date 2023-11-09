@@ -13,7 +13,7 @@ if __name__ == '__main__':
         raise Exception(f"ERROR: Expected file path of the program to compile and run\n{USAGE}")
     
     from compiler import runSourceFile
-    filePath = sys.argv[1]
-    runSourceFile(filePath= filePath)
+    file_path = sys.argv[1]
+    runSourceFile(file_path= file_path)
 
 # TODO add possibility to store compiled version as math equation
