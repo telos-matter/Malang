@@ -1,6 +1,5 @@
 
 def foo () {
-
     res = 6
 }
 
@@ -9,3 +8,7 @@ def foo (bruh) {
 }
 
 res = foo(2)
+
+include std.mlg
+
+res = lol()

@@ -3,6 +3,9 @@
 # TODO add todo highlight and fixme highlight
 
 
+def lol () {
+    res = 69
+}
 
 # def lol (m) {
 #     pass
