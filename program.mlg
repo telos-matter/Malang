@@ -5,7 +5,7 @@ def foo () {
 }
 
 def foo (bruh) {
-    res = 10 + bruh
+    res = 10 + bruh + foo()
 }
 
 res = foo(2)
