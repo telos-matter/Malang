@@ -366,8 +366,9 @@ def constructAST (tokens: list[Token]) -> Node:
                     i += 1
             
             elif tokenType == TokenType.OPEN_PAREN: # Node.ORDER_PAREN
+                print('Here by', parent_token.location(), parent_token.pointOut(), tokens, i, tokens[i].pointOut(),  sep='\n') # TODO delete line
                 close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, token)
-                value, _ = processValueExpression(tokens[i : close_paren], token, 0, True, False, False)
+                value, _ = processValueExpression(tokens[i +1 : close_paren], token, 0, True, False, False)
                 singleton_value_element = Node(NodeType.ORDER_PAREN, value=value)
                 i = close_paren +1
             
@@ -746,7 +747,7 @@ def constructProgram (ast: Node) -> Instruction:
                                 if Scope.FunctionSignature.rawContained(value_element.components['func'], len(args), funcs) is None:
                                     invalidCode(f"Unknown function", value_element.components['func'])
                                 for arg in args:
-                                    checkCalledFuncs(arg)
+                                    checkCalledFuncs(arg, funcs)
                                 return
                             
                             elif value_element.type == NodeType.ANON_FUNC:

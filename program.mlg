@@ -1,9 +1,30 @@
-
-foo = 5
-
-res = {
-    ext foo = 2
-    res = foo
+def sqrt(x) {
+    res = x ^ 0.5
 }
 
-res = foo
+def abs (x) {
+    res = sqrt(x ^ 2)
+}
+
+def equalZero (x) {
+    def positive_mod (a, b) {
+        res = a - ((a // b) * b)
+    }
+    
+    def positive_floor (x) {
+        res = x - positive_mod(x, 1)
+    }
+    
+    def function (x) {
+        res = abs(x) / (abs(x) +1)
+    }
+    
+    res = positive_floor(1 - function(x))
+}
+
+n = 2
+res = equalZero(n)
+
+
+
+
