@@ -597,10 +597,9 @@ def constructProgram (ast: Node) -> Instruction:
     Nodes into Instructions (only a single Instruction
     is returned of course)\n
     Also checks for the validity of the code; referencing
-    a none existing variable, or defining an already existing
-    function. (Recursion and cyclic calls are automatically 
-    accounted for by the fact that functions definitions
-    are sequential)'''
+    a none existing variable, defining an already existing
+    function, recursion and
+    cyclic calls'''
     
     RETURN_VAR_NAME = 'res'
     
@@ -610,6 +609,36 @@ def constructProgram (ast: Node) -> Instruction:
         raise Exception(message)
     
     class Scope:
+        
+        class FunctionSignature:
+            def __init__(self, identifier: Token, params_count: int) -> None:
+                '''A struct that holds a functions' signature'''
+                assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+                self.identifier = identifier
+                self.params_count = params_count
+            
+            def contained(self, funcs: list[Node]) -> Node | None:
+                '''Checks if this function exists in
+                the list of Node.FUNC_DEF'''
+                for func in funcs:
+                    assert func.type == NodeType.FUNC_DEF, f"Not a Node.FUNC_DEF {func}"
+                    if self.identifier == func.components['func'] and self.params_count == len(func.components['params']):
+                        return func
+                return None
+            
+            @classmethod
+            def rawContained(cls, identifier: Token, params_count: int, funcs: list[Node]) -> Node | None:
+                '''Checks if this function signature exists in
+                the list of Node.FUNC_DEF'''
+                return cls(identifier, params_count).contained(funcs)
+            
+            @classmethod
+            def defContained(cls, func_def: Node, funcs: list[Node]) -> Node | None:
+                '''Checks if this Node.FUNC_DEF exists in
+                the list of Node.FUNC_DEF signature based'''
+                assert func_def.type == NodeType.FUNC_DEF, f"Not Node.FUNC_DEF {func_def}"
+                return cls(func_def.components['func'], len(func_def.components['params'])).contained(funcs)
+        
         def __init__(self, parent: Type[Scope] | None, starter: Token) -> None:
             '''A Scope is a scope boi, what is there to explain.\n
             Every scope has its return variable that is
@@ -629,15 +658,6 @@ def constructProgram (ast: Node) -> Instruction:
             self.vars = {return_var: 0}
             self.funcs = []
         
-        def __funcExists (self, identifier: Token, params_count: int) -> Node | None:
-            '''Checks `self` scope only if it has the given function
-            and returns it. Returns `None` if it didn't find it'''
-            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
-            for func in self.funcs:
-                if func.components['func'] == identifier and len(func.components['params']) == params_count:
-                    return func
-            return None
-        
         def resolveVar (self, identifier: Token) -> Number | Instruction:
             '''Looks for the variable recursively and returns its state\n
             If it doesn't exist it an InvalidCode exception'''
@@ -651,16 +671,15 @@ def constructProgram (ast: Node) -> Instruction:
         
         def resolveFunc (self, identifier: Token, args: list[Number | Instruction]) -> Number | Instruction:
             '''Looks for the function recursively and
-            evaluates it with the given arguments\n
-            InvalidCode exception if it doesn't exist'''
+            evaluates it with the given arguments'''
             assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
             scope = self
             while scope is not None:
-                func_def = scope.__funcExists(identifier, len(args))
+                func_def = Scope.FunctionSignature.rawContained(identifier, len(args), scope.funcs)
                 if func_def is not None:
                     func_scope = Scope(scope, func_def.components['func'])
                     params = func_def.components['params']
-                    assert len(args) == len(params), f"Unreachable" # __funcExists already checks
+                    assert len(args) == len(params), f"Unreachable" # rawContained already checks
                     for param, arg in zip(params, args):
                         func_scope.setVarState(param, False, arg)
                     return evaluateScope(func_def.components['body'], func_scope)
@@ -686,15 +705,77 @@ def constructProgram (ast: Node) -> Instruction:
         
         def addFunc (self, func_def: Node) -> None:
             '''Adds a Node.FUNC_DEF to the scope if it doesn't
-            already exist, otherwise InvalidCode exception'''
-            assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
-            exists = self.__funcExists(func_def.components['func'], len(func_def.components['params']))
-            if exists is None:
-                self.funcs.append(func_def)
-            else:
-                original = exists.components['func']
-                func = func_def.components['func']
-                invalidCode(f"This function `{func}`:\n{func.pointOut()}\n{func.location()}\nCannot be defined again as it's already defined here:", original)
+            already exist after validating it,
+            otherwise if it exists InvalidCode exception'''
+            
+            def add (func_def: Node, funcs: list[Node]) -> None:
+                '''The function that actually adds
+                after checking\n
+                `funcs`: a list of Node.FUNC_DEF of the
+                functions that are available'''
+                
+                def validate (content: list[Node], funcs: list[Node]) -> None:
+                    '''The function that actually validates\n
+                    `funcs`: a list of Node.FUNC_DEF representing
+                    the functions available at the moment to
+                    this content. It makes a copy of it'''
+                    funcs = funcs.copy()
+                    
+                    def checkCalledFuncs (value_element: Node | Token, funcs: list[Node]) -> None:
+                        '''Checks if all the functions called
+                        by the given value element exist'''
+                        assert isValueElement(value_element), f"Not a value element {value_element}"
+                        
+                        if type(value_element) == Token:
+                            if value_element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]:
+                                return
+                        
+                        elif type(value_element) == Node:
+                            if value_element.type == NodeType.OP:
+                                checkCalledFuncs(value_element.components['l_value'], funcs)
+                                checkCalledFuncs(value_element.components['r_value'], funcs)
+                                return
+                            
+                            elif value_element.type == NodeType.ORDER_PAREN:
+                                checkCalledFuncs(value_element.components['value'], funcs)
+                                return
+                            
+                            elif value_element.type == NodeType.FUNC_CALL:
+                                args = value_element.components['args']
+                                if Scope.FunctionSignature.rawContained(value_element.components['func'], len(args), funcs) is None:
+                                    invalidCode(f"Unknown function", value_element.components['func'])
+                                for arg in args:
+                                    checkCalledFuncs(arg)
+                                return
+                            
+                            elif value_element.type == NodeType.ANON_FUNC:
+                                validate(value_element.components['body'], funcs)
+                                return
+                        
+                        assert False, f"Unreachable"
+                    
+                    for node in content:
+                        if node.type == NodeType.VAR_ASSIGN:
+                            checkCalledFuncs(node.components['value'], funcs)
+                        
+                        elif node.type == NodeType.FUNC_DEF:
+                            add(node, funcs)
+                        
+                        elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
+                            checkCalledFuncs(node, funcs)
+                
+                assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
+                
+                exists = Scope.FunctionSignature.defContained(func_def, funcs)
+                if exists is None:
+                    validate(func_def.components['body'], funcs)
+                else:
+                    original = exists.components['func']
+                    func = func_def.components['func']
+                    invalidCode(f"This function `{func}`:\n{func.pointOut()}\n{func.location()}\nCannot be defined again as it's already defined here:", original)
+                funcs.append(func_def)
+            
+            add(func_def, self.funcs)
         
         def getReturnVarState (self) -> Number | Instruction:
             '''Returns the return variable state'''
@@ -703,7 +784,7 @@ def constructProgram (ast: Node) -> Instruction:
             except KeyError:
                 assert False, f"Unreachable" # The return var is assigned to this scope at __init__
     
-    def evaluateScope (content: list[Node], scope: Scope | tuple[Token | Scope] | tuple[Token | None]) -> Number | Instruction:
+    def evaluateScope (content: list[Node], scope: Scope | tuple[Token , Scope | None]) -> Number | Instruction:
         '''Evaluates a scope and returns 
         the return variable value, either a Number
         or an Instruction.
@@ -795,13 +876,10 @@ def runSourceFile (file_path: str) -> None:
         for node in ast.components['content']:
             print("\t-", node)
     
-    # validateAST(ast)
-    # if DEBUG:
-    #     print('✅ AST is valid')
-    
     program = constructProgram(ast)
     if DEBUG:
         print('✅ Constructed the program')
-        print("Program:", program, sep='\n')
+        str_program = str(program)[1:-1]
+        print("Program:", str_program, sep='\n')
     
     program.runProgram()

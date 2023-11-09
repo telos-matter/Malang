@@ -1,14 +1,9 @@
 
-def foo () {
-    res = 6
+foo = 5
+
+res = {
+    ext foo = 2
+    res = foo
 }
 
-def foo (bruh) {
-    res = 10 + bruh + foo()
-}
-
-res = foo(2)
-
-include std.mlg
-
-res = lol()
+res = foo
