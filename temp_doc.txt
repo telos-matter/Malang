@@ -3,6 +3,7 @@ Precedence order is PEMDAS (), ^, */ //, +-
 Parenthesis can span lines
 Var assign ends with new line unless parenthensis
 Parens can span multiple lines, but ops are in same line
+; terminates expressions
 
 Vars are case sensitive
 
@@ -10,15 +11,20 @@ Vars are case sensitive
 def func (
 These need be like this, ) {} can span lines 
 
-For the time being you can only reference vars inside your scope
-Planning on adding an ext keyword and referencing outside variables, maybe
+For the time being you can only assign to vars inside your scope
+Planning on adding an ext keyword to assign to and reference outside variables, maybe
+Ext  only allows u to set external values in var assign, nothing else, you can still reference
+Outside functions and variables, as long as they are not overshadowed by a local variable
 
 A function is only defined when it hits the }
 Ofc no recursion and can only call functions above you
 
-You can define functions inside functions with same name? idk
+You can define functions inside functions with same name? Yes
 
 File includes are literally just includes, it is as if you took that file and pasted it there
 
 
 Anonymous functions are block of code that are executed and have their own scope with their own res, is a value element and an instruction node
+
+
+Once if implemented I think that both, pretty sure *,  both if and the else will be executed, and thus the state of the vars is always updated, its the return value that changes

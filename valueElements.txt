@@ -6,3 +6,4 @@ Nodes:
 	Node.OP
 	Node.ORDER_PAREN
 	Node.FUNC_CALL
+	Node.ANON_FUNC

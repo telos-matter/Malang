@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from core import OP_SET, Instruction
+from typing import Type
 from enum import Enum, auto
 from numbers import Number
 
@@ -18,6 +21,7 @@ class TokenType (Enum):
     SEMICOLON   = auto() # `;` to end expressions (not required)
     BOC         = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
     EOC         = auto() # End of Content # This one is not used really
+    EXT_KW      = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
 
 class Token ():
     def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
@@ -41,6 +45,7 @@ class Token ():
         return f"{self.line[:self.char_number -1]}>>>{self.line[self.char_number -1 : self.char_number -1 +self.span]}<<<{self.line[self.char_number -1 +self.span:]}"
     
     def getSynthesizedInfo(self) -> tuple:
+        # FIXME make sure it point to after the token
         '''Returns the info to be passed
         to the constructor for Tokens
         that are synthesized because of
@@ -144,6 +149,8 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokenType = None
                     if identifier == 'def':
                         tokenType = TokenType.DEF_KW
+                    elif identifier == 'ext':
+                        tokenType = TokenType.EXT_KW
                     elif identifier == 'include':
                         tokens.extend(parse(line[j:], False))
                         break
@@ -213,6 +220,7 @@ class Node():
             - `eoc`: the end of content Token
         - `VAR_ASSIGN`:
             - `var`: an identifier token representing the variable getting assigned to
+            - `ext`: a boolean stating whether this variable is a local or external one
             - `value`: a value element representing the assigned value
         - `OP`:
             - `op`: the op token representing the operation being performed
@@ -230,7 +238,7 @@ class Node():
             - `func`: an identifier token representing the function being called
             - `args`: a list of value elements representing the arguments
         - `ANON_FUNC`:
-            - `opener`: an open curly bracket representing the start of the anonymous function
+            - `starter`: an open curly bracket representing the start of the anonymous function
             - `body`: a list of nodes (another AST, but without the root node) 
             representing the body of the anonymous function. It
             can contain any other node, including another Node.ANON_FUNC
@@ -474,7 +482,7 @@ def constructAST (tokens: list[Token]) -> Node:
         
         close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, i +1, tokens[i])
         body = construct(tokens[i +1 : close_curly], False)
-        return (Node(NodeType.ANON_FUNC, opener=tokens[i], body=body), close_curly +1)
+        return (Node(NodeType.ANON_FUNC, starter=tokens[i], body=body), close_curly +1)
     
     def construct (tokens: list[Token], root: bool) -> Node | list[Node]:
         '''The actual function that constructs
@@ -496,13 +504,23 @@ def constructAST (tokens: list[Token]) -> Node:
             token = tokens[i]
             tokenType = token.type
             
-            if tokenType == TokenType.IDENTIFIER: # Node.VAR_ASSIGN or Node.FUNC_CALL
+            if tokenType == TokenType.EXT_KW: # EXT Node.VAR_ASSIGN
+                i += 1
+                if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
+                    syntaxError(f"Expected a variables' name after the `ext` keyword", token)
+                i += 1
+                if len(tokens) <= i or tokens[i].type != TokenType.ASSIGN_OP:
+                    syntaxError(f"Expected an `=` after this variable `{token}` to assign a value to it", tokens[i -1])
+                value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
+                content.append(Node(NodeType.VAR_ASSIGN, var=token, ext=True, value=value))
+                
+            elif tokenType == TokenType.IDENTIFIER: # LOCAL Node.VAR_ASSIGN or Node.FUNC_CALL
                 if len(tokens) <= i +1:
                     syntaxError(f"Expected something after this identifier", token)
                 i += 1
                 if tokens[i].type == TokenType.ASSIGN_OP: # Node.VAR_ASSIGN
                     value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
-                    content.append(Node(NodeType.VAR_ASSIGN, var=token, value=value))
+                    content.append(Node(NodeType.VAR_ASSIGN, var=token, ext=False, value=value))
                 
                 elif tokens[i].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
                     func_call, i = processFuncCall(tokens, token, i)
@@ -574,198 +592,189 @@ def constructAST (tokens: list[Token]) -> Node:
     return construct(tokens, True)
 
 
-RETURN_VAR_NAME = 'res'
-
-def validateAST (ast: list[Node]) -> None:
-    '''Checks for the validity of the code; referencing
+def constructProgram (ast: Node) -> Instruction:
+    '''Constructs the program by translating
+    Nodes into Instructions (only a single Instruction
+    is returned of course)\n
+    Also checks for the validity of the code; referencing
     a none existing variable, or defining an already existing
     function. (Recursion and cyclic calls are automatically 
     accounted for by the fact that functions definitions
     are sequential)'''
     
+    RETURN_VAR_NAME = 'res'
+    
     def invalidCode (message: str, token: Token) -> None:
         '''Raises an invalid code exception.'''
-        message = "❌ INVALID CODE: " +message
-        if token is not None: # TODO??? why is it like so? just add it normally. dont have any case where its none
-            message += f"\n{token.pointOut()}\n{token.location()}"
+        message = "❌ INVALID CODE: " +message +f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
     
-    def getVarsUsedByValueElement (value_element: Node | Token) -> set[Token]:
-        '''Returns a set of Token.IDENTIFIER representing
-        the variables USED BY this value element.'''
-        assert isValueElement(value_element), f"Passed something other than a Value Element"
-        
-        if type(value_element) == Token:
-            if value_element.type == TokenType.IDENTIFIER:
-                return {value_element}
+    class Scope:
+        def __init__(self, parent: Type[Scope] | None, starter: Token) -> None:
+            '''A Scope is a scope boi, what is there to explain.\n
+            Every scope has its return variable that is
+            synthesized from the `starter` which is
+            the token that started this scope\n
+            The class attributes are as follow:\n
+            - `parent`: the parent scope if it exists\n
+            - `return_var`: the return variable of this scope
+            that is synthesized from the `starter`\n
+            - `vars`: a `dict` that maps a Token.IDENTIFIER to an Instruction / Number\n
+            - `funcs`: a `list` of Node.FUNC_DEFs'''
             
-            elif value_element.type == TokenType.NUMBER:
-                return set()
-        
-        elif type(value_element) == Node:
-            if value_element.type == NodeType.OP:
-                l_value = value_element.components['l_value']
-                vars = getVarsUsedByValueElement(l_value)
-                r_value = value_element.components['r_value']
-                vars |= getVarsUsedByValueElement(r_value)
-                return vars
+            return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, *starter.getSynthesizedInfo())
             
-            elif value_element.type == NodeType.ORDER_PAREN:
-                value = value_element.components['value']
-                return getVarsUsedByValueElement(value)
-            
-            elif value_element.type == NodeType.FUNC_CALL:
-                vars = set()
-                args = value_element.components['args']
-                for arg in args:
-                    vars |= getVarsUsedByValueElement(arg)
-                return vars
+            self.parent = parent
+            self.return_var = return_var
+            self.vars = {return_var: 0}
+            self.funcs = []
         
-        assert False, f"Unreachable"
+        def __funcExists (self, identifier: Token, params_count: int) -> Node | None:
+            '''Checks `self` scope only if it has the given function
+            and returns it. Returns `None` if it didn't find it'''
+            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            for func in self.funcs:
+                if func.components['func'] == identifier and len(func.components['params']) == params_count:
+                    return func
+            return None
+        
+        def resolveVar (self, identifier: Token) -> Number | Instruction:
+            '''Looks for the variable recursively and returns its state\n
+            If it doesn't exist it an InvalidCode exception'''
+            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            scope = self
+            while scope is not None:
+                if identifier in scope.vars:
+                    return scope.vars[identifier]
+                scope = scope.parent
+            invalidCode(f"Unknown variable", identifier)
+        
+        def resolveFunc (self, identifier: Token, args: list[Number | Instruction]) -> Number | Instruction:
+            '''Looks for the function recursively and
+            evaluates it with the given arguments\n
+            InvalidCode exception if it doesn't exist'''
+            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            scope = self
+            while scope is not None:
+                func_def = scope.__funcExists(identifier, len(args))
+                if func_def is not None:
+                    func_scope = Scope(scope, func_def.components['func'])
+                    params = func_def.components['params']
+                    assert len(args) == len(params), f"Unreachable" # __funcExists already checks
+                    for param, arg in zip(params, args):
+                        func_scope.setVarState(param, False, arg)
+                    return evaluateScope(func_def.components['body'], func_scope)
+                scope = scope.parent
+            invalidCode(f"Unknown function", identifier)
+        
+        def setVarState (self, identifier: Token, ext: bool, state: Number | Instruction) -> None:
+            '''Sets the new state for a variable, and if it doesn't exist add
+            it, unless it's an external variable, then it's an InvalidCode exception'''
+            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            if ext:
+                scope = self
+                while True:
+                    scope = scope.parent
+                    if scope == None:
+                        break
+                    if identifier in scope.vars:
+                        scope.vars[identifier] = state
+                        return
+                invalidCode(f"This external variable does not exists", identifier)
+            else:
+                self.vars[identifier] = state
+        
+        def addFunc (self, func_def: Node) -> None:
+            '''Adds a Node.FUNC_DEF to the scope if it doesn't
+            already exist, otherwise InvalidCode exception'''
+            assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
+            exists = self.__funcExists(func_def.components['func'])
+            if exists is None:
+                self.funcs.append(func_def)
+            else:
+                original = exists.components['func']
+                func = func_def.components['func']
+                invalidCode(f"This function `{func}`:\n{func.pointOut()}\n{func.location()}\nCannot be defined again as it's already defined here:", original)
+        
+        def getReturnVarState (self) -> Number | Instruction:
+            '''Returns the return variable state'''
+            try:
+                return self.vars[self.return_var]
+            except KeyError:
+                assert False, f"Unreachable" # The return var is assigned to this scope at __init__
     
-    def getFuncsUsedByValueElement (value_element: Node | Token) -> set[Token]:
-        '''Returns a set of Token.IDENTIFIER representing
-        the functions USED BY this value element.'''
-        assert isValueElement(value_element), f"Passed something other than a Value Element"
+    def evaluateScope (content: list[Node], scope: Scope | tuple[Token | Scope] | tuple[Token | None]) -> Number | Instruction:
+        '''Evaluates a scope and returns 
+        the return variable value, either a Number
+        or an Instruction.
+        Either a Scope is given or a tuple
+        to create a new one\n
+        If a tuple is given it should contain:\n
+            - `parent_scope`: the parent scope or `None` in case of the main scope\n
+            - `starter`: a token that started this scope. To synthesize the return variable\n'''
         
-        if type(value_element) == Token:
-            if value_element.type == TokenType.IDENTIFIER:
-                return set()
+        
+        def processValueElement (value_element: Node | Token, scope: Scope) -> Number | Instruction:
+            '''Processes a value element and returns an instruction
+            or a number representing it'''
             
-            elif value_element.type == TokenType.NUMBER:
-                return set()
-        
-        elif type(value_element) == Node:
-            if value_element.type == NodeType.OP:
-                l_value = value_element.components['l_value']
-                funcs = getFuncsUsedByValueElement(l_value)
-                r_value = value_element.components['r_value']
-                funcs |= getFuncsUsedByValueElement(r_value)
-                return funcs
+            assert isValueElement(value_element), f"Not a value element {value_element}"
             
-            elif value_element.type == NodeType.ORDER_PAREN:
-                value = value_element.components['value']
-                return getFuncsUsedByValueElement(value)
+            if type(value_element) == Token:
+                if value_element.type == TokenType.NUMBER:
+                    return value_element.lexeme
+                
+                elif value_element.type == TokenType.IDENTIFIER:
+                    return scope.resolveVar(value_element)
+                
+            elif type(value_element) == Node:
+                if value_element.type == NodeType.OP:
+                    op = OP_SET.fromSymbol(value_element.components['op'].lexeme)
+                    l_value = processValueElement(value_element.components['l_value'], scope)
+                    r_value = processValueElement(value_element.components['r_value'], scope)
+                    return Instruction(op, l_value, r_value)
+                
+                elif value_element.type == NodeType.ORDER_PAREN:
+                    return processValueElement(value_element.components['value'], scope)
+                
+                elif value_element.type == NodeType.FUNC_CALL:
+                    args = []
+                    for arg in value_element.components['args']:
+                        args.append(processValueElement(arg, scope))
+                    return scope.resolveFunc(value_element.components['func'], args)
+                
+                elif value_element.type == NodeType.ANON_FUNC:
+                    return evaluateScope(value_element.components['body'], (scope, value_element.components['starter']))
             
-            elif value_element.type == NodeType.FUNC_CALL:
-                funcs = {value_element.components['func']}
-                args = value_element.components['args']
-                for arg in args:
-                    funcs |= getFuncsUsedByValueElement(arg)
-                return funcs
+            assert False, f"Unreachable"
         
-        assert False, f"Unreachable"
-    
-    def checkVarsAndFuncsUsedByValueElement (value_element: Node | Token, vars: set[Token], funcs: set[Token]) -> None:
-        '''Checks if the variables and functions used
-        by this value element already exist'''
-        assert isValueElement(value_element), f"Something other than value element"
+        if type(scope) == tuple:
+            parent_scope, starter = scope
+            assert starter != None, f"No starter was given"
+            scope = Scope(parent_scope, starter)
         
-        used_vars = getVarsUsedByValueElement(value_element)
-        if not used_vars.issubset(vars):
-            var = next(iter(used_vars.difference(vars)))
-            invalidCode(f"Unknown variable `{var}`", var)
-        used_funcs = getFuncsUsedByValueElement(value_element)
-        if not used_funcs.issubset(funcs):
-            func = next(iter(used_funcs.difference(funcs)))
-            invalidCode(f"Unknown / undefined function `{func}`", func)
-    
-    def validate (ast: list[Node], vars: set[Token], funcs: set[Token]) -> None:
-        '''The functions that actually validates the AST.\n
-        It is put here because it can be called recursively\n
-        `vars`: the variables that I have access to\n
-        `funcs`: the funcs that I have access to'''
-        
-        for node in ast:
+        for node in content:
             if node.type == NodeType.VAR_ASSIGN:
-                value = node.components['value']
-                checkVarsAndFuncsUsedByValueElement(value, vars, funcs)
-                vars.add(node.components['var'])
+                state = processValueElement(node.components['value'], scope)
+                scope.setVarState(node.components['var'], node.components['ext'], state)
             
             elif node.type == NodeType.FUNC_DEF:
-                func = node.components['func']
-                if func in funcs:
-                    original = [original for original in funcs if original == func][0]
-                    invalidCode(f"This function `{func}` is already defined here:\n{original.location()}: {original.pointOut()}", func)
-                func_vars = {Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, *func.getSynthesizedInfo())}
-                func_vars |= set(node.components['params'])
-                validate(node.components['body'], func_vars, funcs.copy())
-                funcs.add(func)
+                scope.addFunc(node)
             
-            elif node.type == NodeType.FUNC_CALL:
-                checkVarsAndFuncsUsedByValueElement(node, vars, funcs)
+            elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
+                processValueElement(node, scope)
             
             else:
-                assert False, f"Forgot to update this. Expecting instruction nodes"
-
-    return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, '', 0, None, 0, 0) # TODO appoint it to the start line either of the function or the file. Requires adding begin_file token
-    validate(ast, {return_var}, set())
-
-
-def constructProgram (ast: list[Node]) -> Instruction:
-    '''Constructs the program from a valid AST. Translates
-    Nodes into Instructions'''
-    
-    def setValueInstruction(value: Number) -> Instruction:
-        '''Creates an instruction that sets a value'''
-        return Instruction(OP_SET.ADD, value, 0)
-    
-    def getInstruction(value: Node | Token, vars_state: dict[Token, Instruction]) -> Instruction | Number:
-        '''IDK how it will work when we have functions, but the
-        idea rn is that it takes stuff that don't affect
-        the `var_state`. RN there is only VAR_ASSIGN, so it takes
-        its value
-        and recessively calls it selfs to find its Instruction
-        or if its a simple number returns it
-        HMMM how about getValueInstruction, that way for params it would
-        call this and it works fine
-        Boi you worrying about the name and idea you gave to the function
-        YOU CAN EDIT BOI + ITS YOUR PROJECT STFU, do whatever you want'''
+                assert False, f"Something other than an instruction node"
         
-        if type(value) == Token:
-            if value.type == TokenType.NUMBER:
-                return value.lexeme
-            
-            elif value.type == TokenType.IDENTIFIER:
-                return vars_state[value]
-            
-            else:
-                assert False, f"Forgot to update this. Received {value}"
-            
-        elif type(value) == Node:
-            if value.type == NodeType.OP:
-                op = OP_SET.fromSymbol(value.components['op'].lexeme)
-                l_value = getInstruction(value.components['l_value'], vars_state)
-                r_value = getInstruction(value.components['r_value'], vars_state)
-                return Instruction(op, l_value, r_value)
-            
-            elif value.type == NodeType.ORDER_PAREN:
-                return getInstruction(value.components['value'], vars_state)
-            
-            elif value.type == NodeType.VAR_ASSIGN:
-                assert False, f"A Node.VAR_ASSIGN can't be here. {value}"
-            
-            else:
-                assert False, f"Forgot to update this. Received {value}"
-            
-        else:
-            assert False, f"Something other than Node and Token? {value}"
+        return scope.getReturnVarState()
     
-    return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, '', 0, None, 0, 0) # TODO maybe later on appoint it to the start line either of the function or the file
-    vars_state = {return_var: setValueInstruction(0)}
+    assert ast.type == NodeType.ROOT, f"Not Node.ROOT"
     
-    for node in ast:
-        if node.type == NodeType.VAR_ASSIGN:
-            var = node.components['var']
-            value = node.components['value']
-            vars_state[var] = getInstruction(value, vars_state)
-            
-        else:
-            assert False, f"Something other than Node.VAR_ASSIGN"
+    return_value = evaluateScope(ast.components['content'], (None, ast.components['boc']))
     
-    return_value = vars_state[return_var]
     if isinstance(return_value, Number):
-        return_value = setValueInstruction(return_value)
+        return_value = Instruction(OP_SET.ADD, return_value, 0)
     return return_value
 
 
@@ -776,23 +785,23 @@ def runSourceFile (file_path: str) -> None:
     
     tokens = parseSourceFile(file_path)
     if DEBUG:
-        print('✅ Parsing')
+        print('✅ Parsed')
         print("Tokens:\n", tokens)
     
     ast = constructAST(tokens)
     if DEBUG:
-        print('✅ Constructing the AST')
-        print("AST:\n")
-        for node in ast:
-            print("-", node)
+        print('✅ Constructed the AST')
+        print("Node.ROOT['content']:\n")
+        for node in ast.components['content']:
+            print("\t-", node)
     
-    validateAST(ast)
-    if DEBUG:
-        print('✅ AST is valid')
+    # validateAST(ast)
+    # if DEBUG:
+    #     print('✅ AST is valid')
     
     program = constructProgram(ast)
     if DEBUG:
-        print('✅ Constructing the program')
+        print('✅ Constructed the program')
         print("Program:", program, sep='\n')
     
     program.runProgram()
