@@ -366,7 +366,6 @@ def constructAST (tokens: list[Token]) -> Node:
                     i += 1
             
             elif tokenType == TokenType.OPEN_PAREN: # Node.ORDER_PAREN
-                print('Here by', parent_token.location(), parent_token.pointOut(), tokens, i, tokens[i].pointOut(),  sep='\n') # TODO delete line
                 close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, token)
                 value, _ = processValueExpression(tokens[i +1 : close_paren], token, 0, True, False, False)
                 singleton_value_element = Node(NodeType.ORDER_PAREN, value=value)
@@ -458,15 +457,13 @@ def constructAST (tokens: list[Token]) -> Node:
         assert func.type == TokenType.IDENTIFIER, f"Not Token.IDENTIFIER"
         assert tokens[i].type == TokenType.OPEN_PAREN, f"Not Token.OPEN_PAREN"
         
-        i += 1
-        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i, tokens[i -1])
+        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, tokens[i])
         args = []
-        if isNextToken(tokens, TokenType.CLOSE_PAREN, i, None) is None: # If it has some args
-            args_tokens = tokens[i : close_paren]
+        if isNextToken(tokens, TokenType.CLOSE_PAREN, i +1, None) is None: # If it has some args
+            args_tokens = tokens[i : close_paren] # Contains the `(`
             inc = 0
             while i +inc < close_paren:
-                parent_token = tokens[i +inc -1] if inc == 0 else tokens[i +inc] # First the `(` then the `,`s
-                arg, inc = processValueExpression(args_tokens, parent_token, inc, True, False, True)
+                arg, inc = processValueExpression(args_tokens, args_tokens[inc], inc +1, True, False, True)
                 if i +inc < close_paren:
                     assert tokens[i +inc].type == TokenType.COMMA, f"It should only exit if it encountered a comma. Exited on {tokens[i +inc]}"
                 args.append(arg)
