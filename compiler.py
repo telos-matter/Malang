@@ -508,11 +508,12 @@ def constructAST (tokens: list[Token]) -> Node:
                 i += 1
                 if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
                     syntaxError(f"Expected a variables' name after the `ext` keyword", token)
+                identifier = tokens[i]
                 i += 1
                 if len(tokens) <= i or tokens[i].type != TokenType.ASSIGN_OP:
                     syntaxError(f"Expected an `=` after this variable `{token}` to assign a value to it", tokens[i -1])
                 value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
-                content.append(Node(NodeType.VAR_ASSIGN, var=token, ext=True, value=value))
+                content.append(Node(NodeType.VAR_ASSIGN, var=identifier, ext=True, value=value))
                 
             elif tokenType == TokenType.IDENTIFIER: # LOCAL Node.VAR_ASSIGN or Node.FUNC_CALL
                 if len(tokens) <= i +1:
