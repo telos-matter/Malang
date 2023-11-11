@@ -1,14 +1,5 @@
 
-def if (bool, a, b) {
-    ret (bool * a) - (bool - 1) * b
-}
+include std
 
-#ret if(
-#    1,
-#    69,
-#    {
-#        ret 420
-#})
-
-res = if (0, 69, 420)
+ret mod(10, 3)
 

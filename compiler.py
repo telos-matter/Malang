@@ -1,6 +1,6 @@
 from __future__ import annotations
-from platform import node
 
+import os
 from core import OP_SET, Instruction
 from typing import Type
 from enum import Enum, auto
@@ -85,22 +85,56 @@ def parseSourceFile (file_path: str) -> list[Token]:
         message = "❌ PARSING ERROR: " +message +f"\n{temp_token.pointOut()}\n{temp_token.location()}"
         raise Exception(message)
     
-    def readContent (file_path: str) -> str:
-        '''Reads the content of a file\n
+    def readContent (file_path: str, main_file_path: str) -> str:
+        '''Tries to locate and read the content
+        of a file\n
+        #### Note:
         If the file is empty it would return an empty str'''
-        with open(file_path, 'r') as f:
-            return f.read()
+        
+        def safeReadHereAndRelative (file_path: str, main_file_path: str) -> str | None:
+            '''Tries to read the file in the compiler location
+            if it fails tries relative to the `main_file_path`'''
+            
+            def safeRead (file_path: str) -> str | None:
+                '''Reads content the file if it exists,
+                or `None` if it doesn't'''
+                try:
+                    with open(file_path, 'r') as f:
+                        return f.read()
+                except FileNotFoundError:
+                    return None
+            
+            if file_path == main_file_path:
+                return safeRead(file_path)
+            content = safeRead(file_path)
+            if content is not None:
+                return content
+            dir = os.path.dirname(main_file_path)
+            file_path = os.path.join(dir, file_path)
+            return safeRead(file_path)
+        
+        FILE_EXT = '.mlg'
+        
+        content = safeReadHereAndRelative(file_path, main_file_path)
+        if content is None:
+            if not file_path.endswith(FILE_EXT):
+                content = safeReadHereAndRelative(file_path +FILE_EXT, main_file_path)
+        if content is not None:
+            return content
+        raise Exception(f"❌ FILE NOT FOUND: Couldn't locate this file `{file_path}`")
     
     NUMBER_PERIOD = '.' # 3.14
     NUMBER_SEP    = '_' # 100_00
     
-    def parse (file_path: str, main: bool) -> list[Token]:
+    def parse (file_path: str, main: bool, main_file_path: str) -> list[Token]:
         '''The functions that actually parses the file\n
-        `main` specifies whether this is the main file being
+        `main`: specifies whether this is the main file being
         parsed to know whether or not to include the BOC and EOC
-        tokens'''
+        tokens\n
+        `main_file_path`: the main file path, in order
+        to resolve includes'''
         
-        content = readContent(file_path).splitlines() # Returns an empty list in case of empty content
+        content = readContent(file_path, main_file_path).splitlines() # Returns an empty list in case of empty content
         tokens = []
         
         if main:
@@ -157,7 +191,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     elif identifier == 'ret':
                         tokenType = TokenType.RET_KW
                     elif identifier == 'include':
-                        tokens.extend(parse(line[j:], False))
+                        tokens.extend(parse(line[j +1:], False, main_file_path))
                         break
                     else:
                         tokenType = TokenType.IDENTIFIER
@@ -204,7 +238,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
         
         return tokens
     
-    return parse(file_path, True)
+    return parse(file_path, True, file_path)
 
 
 class NodeType (Enum):
