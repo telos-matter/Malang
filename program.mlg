@@ -23,7 +23,8 @@ def equalZero (x) {
     res = positive_floor(1 - function(x))
 }
 
-n = 0
+
+n = -0.2
 res = equalZero(n)
 
 
