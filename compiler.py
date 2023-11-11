@@ -340,7 +340,8 @@ def constructAST (tokens: list[Token]) -> Node:
     def processValueExpression (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool, accepts_semicolons: bool, accepts_comas: bool) -> tuple[Node | Token, int]:
         '''Processes a value expression and return a value element
         representing it as well as from where to continue\n
-        The location and what terminates a value expression can vary, so
+        Whether a value expression can have certain
+        terminators vary, so
         the parameters specify how to handle it\n
         `tokens`: normally, the list of all the tokens\n
         `parent_token`: the token that "wants" this value expression. To raise a SyntaxError with in case of an error\n
@@ -349,7 +350,7 @@ def constructAST (tokens: list[Token]) -> Node:
         `accepts_semicolons`: can a semicolon be in this value expression?\n
         `accepts_comas`: can a coma be in this value expression?\n'''
         
-        def nextSingletonValue (tokens: list[Token], parent_token: Token, start_index: int) -> tuple[Node | Token, int]:
+        def nextSingletonValue (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool) -> tuple[Node | Token, int]:
             '''Returns the immediate next singleton
             value starting from `start_index` along side the index
             on which to continue.\n
@@ -358,36 +359,46 @@ def constructAST (tokens: list[Token]) -> Node:
             two value elements\n
             `tokens`: normally, a list of all the tokens\n
             `parent_token`: the token that "wants" this singleton value. To raise a SyntaxError with in case of an error\n
-            `start_index`: from where to start\n'''
+            `start_index`: from where to start\n
+            `skip_eols`: whether to skip EOLs until you find a value or not, meaning one should be
+            the immediate next'''
             
             i = start_index # Just for ease of reference
-            token = tokens[i]
-            tokenType = token.type
-            singleton_value_element = None
             
-            if tokenType == TokenType.NUMBER: # Token.NUMBER
-                singleton_value_element = token
-                i += 1
-            
-            elif tokenType == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL
-                if i +1 < len(tokens) and tokens[i +1].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
-                    singleton_value_element, i = processFuncCall(tokens, token, i +1)
-                
-                else: # A variable
-                    singleton_value_element = token
+            if skip_eols:
+                while i < len(tokens) and tokens[i].type == TokenType.EOL:
                     i += 1
             
-            elif tokenType == TokenType.OPEN_PAREN: # Node.ORDER_PAREN
-                close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, token)
-                value, _ = processValueExpression(tokens[i +1 : close_paren], token, 0, True, False, False)
-                singleton_value_element = Node(NodeType.ORDER_PAREN, value=value)
-                i = close_paren +1
-            
-            elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
-                singleton_value_element, i = processAnonFunc(tokens, i)
-            
+            singleton_value_element = None
+            if i < len(tokens):
+                token = tokens[i]
+                tokenType = token.type
+                
+                if tokenType == TokenType.NUMBER: # Token.NUMBER
+                    singleton_value_element = token
+                    i += 1
+                
+                elif tokenType == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL
+                    if i +1 < len(tokens) and tokens[i +1].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                        singleton_value_element, i = processFuncCall(tokens, token, i +1)
+                    
+                    else: # A variable
+                        singleton_value_element = token
+                        i += 1
+                
+                elif tokenType == TokenType.OPEN_PAREN: # Node.ORDER_PAREN
+                    close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, token)
+                    value, _ = processValueExpression(tokens[i +1 : close_paren], token, 0, True, False, False)
+                    singleton_value_element = Node(NodeType.ORDER_PAREN, value=value)
+                    i = close_paren +1
+                
+                elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
+                    singleton_value_element, i = processAnonFunc(tokens, i)
+                
+                else:
+                    syntaxError(f"A value is required after this `{parent_token}`, found this instead `{token}`", token)
             else:
-                syntaxError(f"A value is required after this `{parent_token}`, found this instead `{token}`", parent_token)
+                syntaxError(f"Expected some value after this `{parent_token}`", parent_token)
             
             assert isValueElement(singleton_value_element) and (type(singleton_value_element) != Node or singleton_value_element.type != NodeType.OP), f"UNREACHABLE" # OCD
             return (singleton_value_element, i)
@@ -418,7 +429,7 @@ def constructAST (tokens: list[Token]) -> Node:
         
         i = start_index # Just for ease of reference
         buffer = []
-        value, i = nextSingletonValue(tokens, parent_token, i)
+        value, i = nextSingletonValue(tokens, parent_token, i, skip_eols)
         buffer.append(value)
         
         while i < len(tokens): # Append Node.OPs if there is something left
@@ -427,7 +438,7 @@ def constructAST (tokens: list[Token]) -> Node:
             
             if tokenType == TokenType.OP: # Node.OP
                 l_value = buffer[0]
-                r_value, i = nextSingletonValue(tokens, token, i +1)
+                r_value, i = nextSingletonValue(tokens, token, i +1, False)
                 if l_value == Node and l_value.type == NodeType.OP: # If an op is the previous value then append
                     buffer[0] = appendOP(l_value, token, r_value)
                 else: # Otherwise create one
@@ -696,7 +707,7 @@ def constructProgram (ast: Node) -> Instruction:
                 
                 func_def = func_sig.__lookRecursively(scope)
                 if func_def is None:
-                    invalidCode(f"Unknown function", func_sig.identifier)
+                    invalidCode(f"Unknown function `{func_sig.identifier}`", func_sig.identifier)
                 else:
                     return func_def
             
@@ -745,7 +756,7 @@ def constructProgram (ast: Node) -> Instruction:
                 if identifier in scope.vars:
                     return scope.vars[identifier]
                 scope = scope.parent
-            invalidCode(f"Unknown variable", identifier)
+            invalidCode(f"Unknown variable `{identifier}`", identifier)
         
         def resolveFunc (self, identifier: Token, args: list[Number | Instruction]) -> Number | Instruction:
             '''Looks for the function recursively and

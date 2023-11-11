@@ -1,196 +1,207 @@
-# # This is the old file, make it the std import thing
-# TODO later on add TRUE and FALSE as syntactic sugar for 1 and 0
-# TODO add todo highlight and fixme highlight
-
-
-#def lol () {
-#    res = 69
-#}
-
-# def lol (m) {
-#     pass
-# }
-
-# def pp (a) {
-
-# }
-
-# import core
-
-# def add (a, b):
-#     return (core.OP_ADD, [a, b])
-
-# def sub (a, b):
-#     return (core.OP_SUB, [a, b])
-
-# def mul (a, b):
-#     return (core.OP_MUL, [a, b])
-
-# def div (a, b):
-#     return (core.OP_DIV, [a, b])
-
-# def idiv (a, b):
-#     return (core.OP_IDIV, [a, b])
-
-# def pow (a, b):
-#     return (core.OP_POW, [a, b])
-
-# def sqrt (n):
-#     return (core.OP_SQRT, [n])
-
-# def ln (n):
-#     return (core.OP_LN, [n])
-
-# def sin (n):
-#     return (core.OP_SIN, [n])
-
-# def cos (n):
-#     return (core.OP_COS, [n])
-
-# ###################################
-
-# def abs (x):
-#     return sqrt(pow(x, 2))
-
-# def __POSITIVE_MOD (a, b): # Only used in equalZero
-#     return sub(a, mul(idiv(a, b), b))
-
-# def __POSITIVE_FLOOR (x): # Only used in equalZero
-#     return sub(x, __POSITIVE_MOD(x, 1))
-
-# def __FUNCTION (x): # Only used in equalZero
-#     return div(abs(x), add(abs(x), 1))
-
-# def equalZero (x): # "Unfortunately", with this implementation, the precision limit is 0.000_000_000_000_000_01, i.e. 0.00000000000000001 == 0
-#     return __POSITIVE_FLOOR(sub(1, __FUNCTION(x)))
-
-# def null (x):
-#     return equalZero(x)
-
-# def _not (boolean):
-#     return div(sub(boolean, 1), -1)
-
-# def diffZero(x):
-#     return _not(null(x))
-
-# def diffNumber (a, b):
-#     return diffZero(sub(a, b))
-
-# def equalNumber (a, b):
-#     return _not(diffNumber(a, b))
-
-# def tan (x):
-#     return div(sin(x), cos(x))
-
-# def log (x, base):
-#     return div(ln(x), ln(base))
-
-# def _if (boolean, a, b):
-#     return sub(mul(boolean, a), mul(sub(boolean, 1), b))
-
-# def _and (boolean_1, boolean_2):
-#     return mul(boolean_1, boolean_2)
-
-# def _or (boolean_1, boolean_2):
-#     return _if(_and(null(boolean_1), null(boolean_2)), 0, 1)
-
-# def xor (boolean_1, boolean_2):
-#     return _if(_and(boolean_1, boolean_2), 0, _or(boolean_1, boolean_2))
-
-# def nand (boolean_1, boolean_2):
-#     return _not(_and(boolean_1, boolean_2))
-
-# def nor (boolean_1, boolean_2):
-#     return _not(_or(boolean_1, boolean_2))
-
-# def xnor (boolean_1, boolean_2):
-#     return _not(xor(boolean_1, boolean_2))
-
-# def diffSign (a, b):
-#     return _if(_and(null(a), null(b)), 0, _if(_or(null(a), null(b)), 1, diffNumber(mul(a, b), mul(abs(a), abs(b)))))
-
-# def sameSign (a, b):
-#     return _not(diffSign(a, b))
-
-# def greaterZero (x):
-#     return _if(null(x),0 , diffSign(x, -1))
-
-# def positive (x):
-#     return greaterZero(x)
-
-# def greater (a, b):
-#     return greaterZero(sub(a, b))
-
-# def lessZero (x):
-#     return _if(null(x), 0, diffSign(x, 1))
-
-# def negative (x):
-#     return lessZero(x)
-
-# def less (a, b):
-#     return lessZero(sub(a, b))
-
-# def greaterEqualZero (x):
-#     return _or(null(x), greaterZero(x))
-
-# def greaterEqual (a, b):
-#     return greaterEqualZero(sub(a, b))
-
-# def lessEqualZero (x):
-#     return _or(null(x), lessZero(x))
-
-# def lessEqual (a, b):
-#     return lessEqualZero(sub(a, b))
-
-# def sign (x):
-#     return _if(negative(x), -1, _if(null(x), 0, 1))
-
-# def max (a, b):
-#     return _if(greater(a, b), a, b)
-
-# def min (a, b):
-#     return _if(less(a, b), a, b)
-
-# def mod (a, b):
-#     return _if(negative(a), sub(b, sub(abs(a), mul(idiv(abs(a), b), b))), sub(a, mul(idiv(a, b), b)))
-
-# def floor (x):
-#     return sub(x, mod(x, 1))
-
-# def _int (x):
-#     return mul(sign(x), floor(abs(x)))
-
-# def ceil (x):
-#     return _if(equalNumber(_int(x), x), x, add(floor(x), 1))
-
-# def decimal (x):
-#     return sub(x, _int(x))
-
-# def round (x):
-#     return mul(sign(x), _if(less(decimal(abs(x)), 0.5), _int(abs(x)), add(_int(abs(x)), 1)))
-
-# def divisible (a, b):
-#     return null(mod(a, b))
-
-# def even (x):
-#     return divisible(x, 2)
-
-# def odd (x):
-#     return _not(even(x))
-
-# # FizzBuzz, evaluates to 3 if the number is devisable by 5 and 3, to 2 if divisible only by 5, to 1 if divisible only by 3, and to 0 otherwise
-# number = 15
-# program = _if(_and(divisible(number, 5), divisible(number, 3)), 3, _if(divisible(number, 5), 2, _if(divisible(number, 3), 1, 0)))
-
-# # program = max(69, 420)
-
-# import time
-# start = time.time()
-# out = core.evaluateOP(program[0], program[1])
-# end = time.time()
-
-# if int(out) == out:
-#     out = int(out)
-
-# print(f"Outputted {out}\nComputed in {end -start} sec")
-# #########################
+TRUE = 1
+FALSE = 0
+
+def bool (x) {
+    # TODO impl, parse as bool
+}
+
+def sqrt (x) {
+    ret x ^ 0.5
+}
+
+def abs (x) {
+    ret sqrt(x ^ 2)
+}
+
+def equalZero (x) {
+    # The backbone of this whole thing 😂
+    
+    def positiveMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+    
+    def positiveFloor (x) {
+        ret x - positiveMod(x, 1)
+    }
+    
+    def function (x) {
+        ret abs(x) / (abs(x) +10) # 10 for "damping", could do with any positive value
+    }
+    
+    ret positiveFloor(1 -function(x))
+}
+
+def null (x) {
+    # An alias
+    ret equalZero(x)
+}
+
+def not (bool) {
+    ret (bool - 1) / -1
+}
+
+def diffNumber (a, b) {
+    ret not(null(a - b))
+}
+
+def equalNumber (a, b) {
+    ret not(diffNumber(a, b))
+}
+
+def if (bool, a, b) {
+    ret (bool * a) - (bool - 1) * b
+}
+
+def and (bool_1, bool_2) {
+    ret bool_1 * bool_2
+}
+
+def or (bool_1, bool_2) {
+    both_zero = and(null(bool_1), null(bool_2))
+    ret if(both_zero, 0, 1)
+
+def xor (bool_1, bool_2) {
+    ret if(and(bool_1, bool_2), 0, or(bool_1, bool_2))
+}
+
+def nand (bool_1, bool_2) {
+    ret not(and(bool_1, bool_2))
+}
+
+def nor (bool_1, bool_2) {
+    ret not(or(bool_1, bool_2))
+}
+
+def xnor (bool_1, bool_2) {
+    ret not(xor(bool_1, bool_2))
+}
+
+def diffSign (a, b) {
+    # negative, positive or null
+    
+    both_zero = and(null(a), null(b))
+    
+    else_res = {
+        one_zero = or(null(a), null(b))
+        
+        ret if(one_zero, 1, {
+            diffNumber(a * b, abs(a) * abs(b))
+        })
+    }
+    
+    ret if(both_zero, 0, else_res)
+}
+
+def sameSign (a, b) {
+    ret not(diffSign(a, b))
+}
+
+def greaterZero (x) {
+    ret if(null(x), 0, diffSign(x, -1))
+
+def positive (x) {
+    # Alias
+    ret greaterZero(x)
+}
+
+def greater (a, b) {
+    ret greaterZero(a - b)
+}
+
+def lessZero (x) {
+    ret if(null(x), 0, diffSign(x, 1))
+}
+
+def negative (x) {
+    # Alias
+    ret lessZero(x)
+}
+
+def less (a, b) {
+    ret lessZero(a - b)
+}
+
+def greaterEqualZero (x) {
+    ret or(null(x), greaterZero(x))
+}
+
+def greaterEqual (a, b) {
+    ret greaterEqualZero(a - b)
+}
+
+def lessEqualZero (x) {
+    ret or(null(x), lessZero(x))
+}
+
+def lessEqual (a, b) {
+    ret lessEqualZero(a - b)
+}
+
+def sign (x) {
+    # x < 0  -> -1
+    # x == 0 -> 0
+    # x > 0  -> 1
+    
+    else_res = {
+        ret = if(null(x), 0, 1)
+    }
+    
+    ret if(negative(x), -1, else_res)
+}
+
+def max (a, b) {
+    ret if(greater(a, b), a, b)
+}
+
+def min (a, b) {
+    ret if(less(a, b), a, b)
+}
+
+def mod (a, b) {
+    def positiveMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+    # TODO impl
+    ret _if(negative(a), sub(b, sub(abs(a), mul(idiv(abs(a), b), b))), sub(a, mul(idiv(a, b), b)))
+}
+
+def floor (x) {
+    ret sub(x, mod(x, 1))
+}
+
+def int (x) {
+    ret sign(x) * floor(abs(x)))
+}
+
+# TODO left it here
+def ceil (x) {
+    ret _if(equalNumber(_int(x), x), x, add(floor(x), 1))
+}
+
+def decimal (x) {
+}
+    ret sub(x, _int(x))
+
+def round (x) {
+}
+    ret mul(sign(x), _if(less(decimal(abs(x)), 0.5), _int(abs(x)), add(_int(abs(x)), 1)))
+
+def divisible (a, b) {
+}
+    ret null(mod(a, b))
+
+def even (x) {
+}
+    ret divisible(x, 2)
+
+def odd (x) {
+}
+    ret _not(even(x))
+
+def fizzBuzz (n) {
+
+}
+
+# FizzBuzz, evaluates to 3 if the number is devisable by 5 and 3, to 2 if divisible only by 5, to 1 if divisible only by 3, and to 0 otherwise
+number = 15
+program = _if(_and(divisible(number, 5), divisible(number, 3)), 3, _if(divisible(number, 5), 2, _if(divisible(number, 3), 1, 0)))

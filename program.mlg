@@ -1,26 +1,13 @@
-def sqrt(x) {
-    ret x ^ 0.5
+
+def if (bool, a, b) {
+    ret (bool * a) - (bool - 1) * b
 }
 
-def abs (x) {
-    ret sqrt(x ^ 2)
-}
+#ret if(
+#    1,
+#    69,
+#    {
+#        ret 420
+#})
 
-def equalZero (x) {
-    def positive_mod (a, b) {
-        ret a - ((a // b) * b)
-    }
-    
-    def positive_floor (x) {
-        ret x - positive_mod(x, 1)
-    }
-    
-    def function (x) {
-        ret abs(x) / (abs(x) +10) # 10 for "damping", could do with any positive value
-    }
-    
-    ret positive_floor(1 -function(x))
-}
-
-n = -0.2
-res = equalZero(n)
+res = if (1, 69, 420)

@@ -7,3 +7,4 @@
 
 - Don't forget syntax in vscode extensions
 - About syntax, function name can't betrayed as consts
+- TODO add todo highlight and fixme highlight
