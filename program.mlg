@@ -1,5 +1,5 @@
 
 include std
 
-ret mod(10, 3)
+ret divisible(10, 2)
 

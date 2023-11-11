@@ -990,12 +990,14 @@ def constructProgram (ast: Node) -> Instruction:
     return return_value
 
 
-def runSourceFile (file_path: str) -> None:
-    '''Compiles and runs a source file'''
+def compile (args: dict) -> None:
+    '''Not only compiles, but rather does what ever is in the args'''
     
-    DEBUG = False
+    FILE_PATH = args['file_path']
+    DEBUG = args['debug']
+    INTERPRET = args['interpret']
     
-    tokens = parseSourceFile(file_path)
+    tokens = parseSourceFile(FILE_PATH)
     if DEBUG:
         print('✅ Parsed')
         print("Tokens:\n", tokens)
@@ -1013,4 +1015,14 @@ def runSourceFile (file_path: str) -> None:
         str_program = str(program)[1:-1]
         print("Program:", str_program, sep='\n')
     
-    program.runProgram()
+    
+    result, time, count = program.runProgram()
+    if INTERPRET:
+        if result in [0, 1]:
+            result = bool(result)
+    
+    print(result)
+    if DEBUG:
+        print(f"The result of the program is: {result}")
+        print(f"It was computed in {time} seconds")
+        print(f"It took {count} instructions to compute the result")

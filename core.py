@@ -71,8 +71,13 @@ class Instruction ():
         
         return (self.op.function(self.a, self.b), counter)
     
-    def runProgram(self) -> None:
-        '''Runs the program and displays information about it'''
+    def runProgram(self) -> tuple[Number, float, int]:
+        '''Runs the program and returns information about it\n
+        Namely:\n
+        - The result\n
+        - How long it took to compute in seconds\n
+        - How many instructions it computed'''
+        
         import sys
         sys.setrecursionlimit(10_000) # If you are wondering, because I was, if the change is global (to all future python instances), no it is not, I tested it
         
@@ -81,11 +86,12 @@ class Instruction ():
         start = time.time()
         result, counter = self.evaluate() # The instructions are close together so that it misses no milliseconds                                                                                                                                                                                               # A joke obviously
         end = time.time()
+        duration = end - start
         
         if result == int(result):
             result = int(result)
         
-        print(f"{result}\nThe result is of the program is: {result}\nIt was computed in {end -start} seconds\nIt preformed {counter} instructions")
+        return (result, duration, counter)
     
     def __str__(self) -> str:
         return f"({self.a} {self.op} {self.b})"

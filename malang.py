@@ -1,19 +1,18 @@
 
 if __name__ == '__main__':
-    import sys
-
-    '''Right now there is only the possibility to compile
-    and run a source file
-    I want later on to add possibility to compile alone
-    and then to run a compiled source file'''
+    import argparse
     
-    USAGE = """Usage: python3 malang.py <file>"""
-
-    if len(sys.argv) < 2:
-        raise Exception(f"ERROR: Expected file path of the program to compile and run\n{USAGE}")
+    parser = argparse.ArgumentParser(
+        prog='Malang',
+        description='Runs a Malang file',
+        epilog='https://github.com/telos-matter/Malang'
+        )
     
-    from compiler import runSourceFile
-    file_path = sys.argv[1]
-    runSourceFile(file_path= file_path)
-
-# TODO add possibility to store compiled version as math equation
+    parser.add_argument('-d', '--debug', action='store_true', help='Run with debug info')
+    parser.add_argument('-i', '--interpret', action='store_true', help='Interpret the output as TRUE or FALSE if possible') # This would be fire with list, cuz we'll be able to show "Hello World!"
+    parser.add_argument('file_path')
+    
+    args = vars(parser.parse_args())
+    
+    from compiler import compile
+    compile(args)
