@@ -31,3 +31,6 @@ In the same scope two functions can't have the same name. A scope is entered on 
 
 
 Also I wanna add a ret keyword that either returns what's in front of it or res if nothing in front
+
+
+Negative number exists as they re so -5^2 == 25 but - 5^2 is -25

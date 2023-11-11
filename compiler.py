@@ -428,21 +428,19 @@ def constructAST (tokens: list[Token]) -> Node:
                 return root_op_node
         
         i = start_index # Just for ease of reference
-        buffer = []
-        value, i = nextSingletonValue(tokens, parent_token, i, skip_eols)
-        buffer.append(value)
+        buffer, i = nextSingletonValue(tokens, parent_token, i, skip_eols)
         
         while i < len(tokens): # Append Node.OPs if there is something left
             token = tokens[i]
             tokenType = token.type
             
             if tokenType == TokenType.OP: # Node.OP
-                l_value = buffer[0]
+                l_value = buffer
                 r_value, i = nextSingletonValue(tokens, token, i +1, False)
-                if l_value == Node and l_value.type == NodeType.OP: # If an op is the previous value then append
-                    buffer[0] = appendOP(l_value, token, r_value)
+                if type(l_value) == Node and l_value.type == NodeType.OP: # If an op is the previous value then append
+                    buffer = appendOP(l_value, token, r_value)
                 else: # Otherwise create one
-                    buffer[0] = Node(NodeType.OP, op=token, l_value=l_value, r_value=r_value)
+                    buffer = Node(NodeType.OP, op=token, l_value=l_value, r_value=r_value)
             
             elif tokenType == TokenType.EOL:
                 if skip_eols:
@@ -465,9 +463,9 @@ def constructAST (tokens: list[Token]) -> Node:
             else:
                 syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It can't be there", token)
             
-        if len(buffer) != 1 or not isValueElement(buffer[0]):
-            assert False, f"Buffer has a none value element: {buffer}"
-        return (buffer[0], i)
+        if not isValueElement(buffer):
+            assert False, f"Buffer is not a value element: {buffer}"
+        return (buffer, i)
     
     def processFuncCall (tokens: list[Token], func: Token, open_paren_index: int) -> tuple[Node, int]:
         '''Processes a function call and returns a Node.FUNC_CALL
@@ -961,7 +959,7 @@ def constructProgram (ast: Node) -> Instruction:
 def runSourceFile (file_path: str) -> None:
     '''Compiles and runs a source file'''
     
-    DEBUG = True
+    DEBUG = False
     
     tokens = parseSourceFile(file_path)
     if DEBUG:

@@ -10,4 +10,5 @@ def if (bool, a, b) {
 #        ret 420
 #})
 
-res = if (1, 69, 420)
+res = if (0, 69, 420)
+
