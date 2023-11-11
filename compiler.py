@@ -603,6 +603,7 @@ def constructProgram (ast: Node) -> Instruction:
     RETURN_VAR_NAME = 'res'
     
     def invalidCode (message: str, token: Token) -> None:
+        # TODO add assert token, in others too
         '''Raises an invalid code exception.'''
         message = "❌ INVALID CODE: " +message +f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
@@ -610,6 +611,39 @@ def constructProgram (ast: Node) -> Instruction:
     class Scope:
         
         class FunctionSignature:
+            
+            @classmethod
+            def checkAlreadyDefined (cls, func_def: Node, scope: Scope) -> None:
+                '''Checks if a function (in the form of Node.FUNC_DEF)
+                is already defined in this scope (local scope only
+                of course), if it is, throw an InvalidCode exception'''
+                func = cls.fromFuncDef(func_def).contained(scope.funcs)
+                if func is not None:
+                    invalidCode("fuck off, already exists", func_def.components['func'])
+                pass # TODO reimpl
+            
+            @classmethod
+            def resolveFuncCall (cls, func_call: Node, scope: Scope) -> Node:
+                '''Checks scopes recessively for the Node.FUNC_CALL
+                and returns the Node.FUNC_DEF corresponding to it. Or
+                throws an InvalidCode exception if it didn't find it'''
+                identifier = func_call.components['func']
+                args = func_call.components['args']
+                while scope is not None:
+                    func_def = Scope.FunctionSignature.rawContained(identifier, len(args), scope.funcs)
+                    if func_def is not None:
+                        return func_def
+                        # func_scope = Scope(scope, func_def.components['func'])
+                        # params = func_def.components['params']
+                        # assert len(args) == len(params), f"Unreachable" # rawContained already checks
+                        # for param, arg in zip(params, args):
+                        #     func_scope.setVarState(param, False, arg)
+                        # return evaluateScope(func_def.components['body'], func_scope)
+                    scope = scope.parent
+                invalidCode(f"Fuck off, Unknown function", identifier)
+                pass # TODO reimpl
+            
+            # remove all below and recheck
             def __init__(self, identifier: Token, params_count: int) -> None:
                 '''A struct that holds a functions' signature'''
                 assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
@@ -624,6 +658,24 @@ def constructProgram (ast: Node) -> Instruction:
                     if self.identifier == func.components['func'] and self.params_count == len(func.components['params']):
                         return func
                 return None
+            
+            def __eq__(self, other: object) -> bool:
+                '''Two FunctionSignatures are equal if they
+                have the same `identifier` and `params_count`'''
+                if isinstance(other, self.__class__):
+                    return self.identifier == other.identifier and self.params_count == other.params_count
+                else:
+                    return False
+            
+            def __hash__(self) -> int:
+                '''Hash based on the `identifier` and the `params_count`'''
+                return hash((self.identifier, self.params_count))
+            
+            @classmethod
+            def fromFuncDef (cls, func_def: Node) -> Type[Scope.FunctionSignature]:
+                '''An instance from Node.FUNC_DEF'''
+                assert func_def.type == NodeType.FUNC_DEF, f"Not Node.FUNC_DEF {func_def}"
+                return cls(func_def.components['func'], len(func_def.components['params']))
             
             @classmethod
             def rawContained(cls, identifier: Token, params_count: int, funcs: list[Node]) -> Node | None:
@@ -656,6 +708,7 @@ def constructProgram (ast: Node) -> Instruction:
             self.return_var = return_var
             self.vars = {return_var: 0}
             self.funcs = []
+        # TODO repass scope class
         
         def resolveVar (self, identifier: Token) -> Number | Instruction:
             '''Looks for the variable recursively and returns its state\n
@@ -683,7 +736,7 @@ def constructProgram (ast: Node) -> Instruction:
                         func_scope.setVarState(param, False, arg)
                     return evaluateScope(func_def.components['body'], func_scope)
                 scope = scope.parent
-            invalidCode(f"Unknown function", identifier)
+            invalidCode(f"Unknown function", identifier) # Calling an unknown function trough main scope, because otherwise it has already been checked for and this can be an assert, when we add main function later on, make the main scope be a main function i guess?
         
         def setVarState (self, identifier: Token, ext: bool, state: Number | Instruction) -> None:
             '''Sets the new state for a variable, and if it doesn't exist add
@@ -704,77 +757,168 @@ def constructProgram (ast: Node) -> Instruction:
         
         def addFunc (self, func_def: Node) -> None:
             '''Adds a Node.FUNC_DEF to the scope if it doesn't
-            already exist after validating it,
-            otherwise if it exists InvalidCode exception'''
+            already exist (in that scope) after validating it,
+            otherwise if it exists or is invalid InvalidCode exception\n
+            #### How it works:
+            Simply check if this function already exists in this scope
+            and check if you call any unknown functions. Simple as that.
+            Also you don't add a function, meaning you don't define a function,
+            unless it's valid
+            #### Reminder for my self:
+            You may be like "hey, well since when I call a function
+            I check if it exists, why do it here. Here let's just
+            check if it already exists in the scope and that's it"
+            The problem with that would be that you could add a function
+            and inside that function call another function that you define later
+            on, and that one calls the first one.. And also recursion
+            I'm only saying this
+            because my head was fried yesterday and I left it as a note
+            for today's me, so here I am for future me in case I change something'''
             
-            def add (func_def: Node, funcs: list[Node]) -> None:
-                '''The function that actually adds
-                after checking\n
-                `funcs`: a list of Node.FUNC_DEF of the
-                functions that are available'''
+            def checkCalledFuncs (value_element: Node | Token, scope: Scope) -> None:
+                '''Checks if all the functions called
+                by the given value element are available
+                (in this scope or parent ones)'''
                 
-                def validate (content: list[Node], funcs: list[Node]) -> None:
-                    '''The function that actually validates\n
-                    `funcs`: a list of Node.FUNC_DEF representing
-                    the functions available at the moment to
-                    this content. It makes a copy of it'''
-                    funcs = funcs.copy()
+                assert isValueElement(value_element), f"Not a value element {value_element}"
+                
+                if type(value_element) == Token:
+                    if value_element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]:
+                        return
+                
+                elif type(value_element) == Node:
+                    if value_element.type == NodeType.OP:
+                        checkCalledFuncs(value_element.components['l_value'], scope)
+                        checkCalledFuncs(value_element.components['r_value'], scope)
+                        return
                     
-                    def checkCalledFuncs (value_element: Node | Token, funcs: list[Node]) -> None:
-                        '''Checks if all the functions called
-                        by the given value element exist'''
-                        assert isValueElement(value_element), f"Not a value element {value_element}"
-                        
-                        if type(value_element) == Token:
-                            if value_element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]:
-                                return
-                        
-                        elif type(value_element) == Node:
-                            if value_element.type == NodeType.OP:
-                                checkCalledFuncs(value_element.components['l_value'], funcs)
-                                checkCalledFuncs(value_element.components['r_value'], funcs)
-                                return
-                            
-                            elif value_element.type == NodeType.ORDER_PAREN:
-                                checkCalledFuncs(value_element.components['value'], funcs)
-                                return
-                            
-                            elif value_element.type == NodeType.FUNC_CALL:
-                                args = value_element.components['args']
-                                if Scope.FunctionSignature.rawContained(value_element.components['func'], len(args), funcs) is None:
-                                    invalidCode(f"Unknown function", value_element.components['func'])
-                                for arg in args:
-                                    checkCalledFuncs(arg, funcs)
-                                return
-                            
-                            elif value_element.type == NodeType.ANON_FUNC:
-                                validate(value_element.components['body'], funcs)
-                                return
-                        
-                        assert False, f"Unreachable"
+                    elif value_element.type == NodeType.ORDER_PAREN:
+                        checkCalledFuncs(value_element.components['value'], scope)
+                        return
                     
-                    for node in content:
-                        if node.type == NodeType.VAR_ASSIGN:
-                            checkCalledFuncs(node.components['value'], funcs)
-                        
-                        elif node.type == NodeType.FUNC_DEF:
-                            add(node, funcs)
-                        
-                        elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
-                            checkCalledFuncs(node, funcs)
+                    elif value_element.type == NodeType.FUNC_CALL:
+                        Scope.FunctionSignature.resolveFuncCall(value_element, scope) # TODO a solo function
+                        for arg in value_element.components['args']:
+                            checkCalledFuncs(arg, scope)
+                        return
+                    
+                    elif value_element.type == NodeType.ANON_FUNC:
+                        validateScopeFuncCalls(value_element.components['body'], scope, value_element.components['starter'])
+                        return
                 
-                assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
-                
-                exists = Scope.FunctionSignature.defContained(func_def, funcs)
-                if exists is None:
-                    validate(func_def.components['body'], funcs)
-                else:
-                    original = exists.components['func']
-                    func = func_def.components['func']
-                    invalidCode(f"This function `{func}`:\n{func.pointOut()}\n{func.location()}\nCannot be defined again as it's already defined here:", original)
-                funcs.append(func_def)
+                assert False, f"Unreachable"
             
-            add(func_def, self.funcs)
+            def validateScopeFuncCalls (content: list[Node], parent_scope: Scope, starter: Token) -> None:
+                '''Creates a new temporary scope and validates
+                its function calls'''
+                
+                scope = Scope(parent_scope, starter)
+                
+                for node in content:
+                    if node.type == NodeType.VAR_ASSIGN:
+                        checkCalledFuncs(node.components['value'], scope)
+                    
+                    elif node.type == NodeType.FUNC_DEF:
+                        scope.addFunc(node)
+                    
+                    elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
+                        checkCalledFuncs(node, scope)
+                    
+                    else:
+                        assert False, f"Something other than instruction node {node}"
+            
+            assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
+            
+            Scope.FunctionSignature.checkAlreadyDefined(func_def, self)
+            validateScopeFuncCalls(func_def.components['body'], self, func_def.components['func'])
+            self.funcs.append(func_def)
+            
+
+
+            # def add (func_def: Node, funcs: list[Node], available: set[Scope.FunctionSignature]) -> None: # i need my scope and all funcs from all my parents scopes
+            #     '''In a given scope, it takes a Node.FUNC_DEF
+            #     that you want to add to that scope. Checks
+            #     if it is not already defined in said scope
+            #     and if it is valid and then adds it\n
+            #     `funcs`: a list of Node.FUNC_DEF of the
+            #     functions that are available in that
+            #     scope, and also the list that
+            #     the `func_def` will be added to\n
+            #     `available`: a set of all the available
+            #     functions (in the form of function signatures)
+            #     from the above scopes (it's fine
+            #     if one overshadows another, the important
+            #     is that it exists)'''
+                
+            #     def validate (content: list[Node], funcs: list[Node], available: set[Scope.FunctionSignature]) -> None:
+            #         '''The function that actually validates\n
+            #         `funcs`: a list of Node.FUNC_DEF representing
+            #         the functions available in that
+            #         this content. It makes a copy of it'''
+            #         funcs = funcs.copy()
+                    
+            #         def checkCalledFuncs (value_element: Node | Token, funcs: list[Node]) -> None:
+            #             '''Checks if all the functions called
+            #             by the given value element exist'''
+            #             assert isValueElement(value_element), f"Not a value element {value_element}"
+                        
+            #             if type(value_element) == Token:
+            #                 if value_element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]:
+            #                     return
+                        
+            #             elif type(value_element) == Node:
+            #                 if value_element.type == NodeType.OP:
+            #                     checkCalledFuncs(value_element.components['l_value'], funcs)
+            #                     checkCalledFuncs(value_element.components['r_value'], funcs)
+            #                     return
+                            
+            #                 elif value_element.type == NodeType.ORDER_PAREN:
+            #                     checkCalledFuncs(value_element.components['value'], funcs)
+            #                     return
+                            
+            #                 elif value_element.type == NodeType.FUNC_CALL:
+            #                     args = value_element.components['args']
+            #                     if Scope.FunctionSignature.rawContained(value_element.components['func'], len(args), funcs) is None:
+            #                         invalidCode(f"Unknown function", value_element.components['func'])
+            #                     for arg in args:
+            #                         checkCalledFuncs(arg, funcs)
+            #                     return
+                            
+            #                 elif value_element.type == NodeType.ANON_FUNC:
+            #                     validate(value_element.components['body'], funcs)
+            #                     return
+                        
+            #             assert False, f"Unreachable"
+                    
+            #         for node in content:
+            #             if node.type == NodeType.VAR_ASSIGN:
+            #                 checkCalledFuncs(node.components['value'], funcs)
+                        
+            #             elif node.type == NodeType.FUNC_DEF:
+            #                 add(node, funcs)
+                        
+            #             elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
+            #                 checkCalledFuncs(node, funcs)
+                
+            #     assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
+                
+            #     exists = Scope.FunctionSignature.defContained(func_def, funcs) # Does it exist in my scope?
+            #     if exists is None:
+            #         validate(func_def.components['body'], funcs, available)
+            #     else:
+            #         original = exists.components['func']
+            #         func = func_def.components['func']
+            #         invalidCode(f"This function `{func}`:\n{func.pointOut()}\n{func.location()}\nCannot be defined again as it's already defined here:", original)
+            #     funcs.append(func_def)
+            
+            # assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
+            
+            # available = set()
+            # scope = self.parent
+            # while scope is not None:
+            #     available |= set([Scope.FunctionSignature.fromFuncDef(func) for func in scope.funcs])
+            #     scope = scope.parent
+            # add(func_def, self.funcs, available)
         
         def getReturnVarState (self) -> Number | Instruction:
             '''Returns the return variable state'''

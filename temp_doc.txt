@@ -28,4 +28,12 @@ File includes are literally just includes, it is as if you took that file and pa
 Anonymous functions are block of code that are executed and have their own scope with their own res, is a value element and an instruction node
 
 
+
 Once if implemented I think that both, pretty sure *,  both if and the else will be executed, and thus the state of the vars is always updated, its the return value that changes
+
+
+
+In the same scope two functions can't have the same name. A scope is entered on each new function or anon_function
+
+
+Also I wanna add a ret keyword that either returns what's in front of it or res if nothing in front
