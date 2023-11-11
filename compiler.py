@@ -47,7 +47,6 @@ class Token ():
         return f"{self.line[:self.char_number -1]}>>>{self.line[self.char_number -1 : self.char_number -1 +self.span]}<<<{self.line[self.char_number -1 +self.span:]}"
     
     def getSynthesizedInfo(self) -> tuple:
-        # FIXME make sure it point to after the token
         '''Returns the info to be passed
         to the constructor for Tokens
         that are synthesized because of
@@ -581,7 +580,7 @@ def constructAST (tokens: list[Token]) -> Node:
                     content.append(func_call)
                 
                 else:
-                    syntaxError(f"Was not expecting this after an identifier", tokens[i])
+                    syntaxError(f"Was not expecting this `{tokens[i]}` after an identifier", tokens[i])
             
             elif tokenType == TokenType.DEF_KW: # Node.FUNC_DEF:
                 i += 1
