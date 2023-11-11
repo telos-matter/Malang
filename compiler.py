@@ -23,6 +23,7 @@ class TokenType (Enum):
     BOC         = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
     EOC         = auto() # End of Content # This one is not used really
     EXT_KW      = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
+    RET_KW      = auto() # The `ret` keyword to return values
 
 class Token ():
     def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
@@ -153,6 +154,8 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         tokenType = TokenType.DEF_KW
                     elif identifier == 'ext':
                         tokenType = TokenType.EXT_KW
+                    elif identifier == 'ret':
+                        tokenType = TokenType.RET_KW
                     elif identifier == 'include':
                         tokens.extend(parse(line[j:], False))
                         break
@@ -212,6 +215,7 @@ class NodeType (Enum):
     FUNC_DEF    = auto() # Function definition. Can have nested functions. Functions overloading is allowed
     FUNC_CALL   = auto() # Function call
     ANON_FUNC   = auto() # Anonymous function
+    RETURN      = auto() # Return to return from scopes, either a value in front of it or the return variable
 
 class Node():
     def __init__(self, nodeType: NodeType, **components) -> None:
@@ -244,6 +248,11 @@ class Node():
             - `body`: a list of nodes (another AST, but without the root node) 
             representing the body of the anonymous function. It
             can contain any other node, including another Node.ANON_FUNC
+        - `RETURN`:
+            - `has_value`: a boolean indicating whether this return has a value that
+            it should return or if it should return the return variable
+            - `value`: a value element that would be returned, if and only if `has_value`
+            is `True`
         '''
         self.type = nodeType
         self.components = components
@@ -255,7 +264,7 @@ class Node():
     def isInstructionNode (self) -> bool:
         '''Whether this Node is an instruction node or not\n
         Instruction nodes are the only Nodes that can start new instructions'''
-        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_CALL, NodeType.FUNC_DEF, NodeType.ANON_FUNC]
+        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_CALL, NodeType.FUNC_DEF, NodeType.ANON_FUNC, NodeType.RETURN]
     
     def __repr__(self) -> str:
         return f"{self.type}\n\t=> {self.components}"
@@ -575,6 +584,14 @@ def constructAST (tokens: list[Token]) -> Node:
                 anon_func, i = processAnonFunc(tokens, i)
                 content.append(anon_func)
             
+            elif tokenType == TokenType.RET_KW: # Node.RETURN
+                i += 1
+                if len(tokens) <= i or tokens[i].type in [TokenType.EOL, TokenType.SEMICOLON]: # Node.RETURN['has_value'] == False
+                    content.append(Node(NodeType.RETURN, has_value=False))
+                else: # Node.RETURN['has_value'] == True
+                    value, i = processValueExpression(tokens, token, i, False, True, False)
+                    content.append(Node(NodeType.RETURN, has_value=True, value=value))
+            
             elif tokenType in [TokenType.EOL, TokenType.SEMICOLON]: # Skip
                 i += 1
             
@@ -830,6 +847,10 @@ def constructProgram (ast: Node) -> Instruction:
                     elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
                         checkCalledFuncs(node, scope)
                     
+                    elif node.type == NodeType.RETURN:
+                        if node.components['has_value']:
+                            checkCalledFuncs(node.components['value'], scope)
+                    
                     else:
                         assert False, f"Something other than instruction node {node}"
             
@@ -905,6 +926,12 @@ def constructProgram (ast: Node) -> Instruction:
             
             elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
                 processValueElement(node, scope)
+            
+            elif node.type == NodeType.RETURN:
+                if node.components['has_value']:
+                    return processValueElement(node.components['value'], scope)
+                else:
+                    return scope.getReturnVarState()
             
             else:
                 assert False, f"Something other than an instruction node"

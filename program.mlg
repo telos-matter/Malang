@@ -1,32 +1,26 @@
 def sqrt(x) {
-    res = x ^ 0.5
+    ret x ^ 0.5
 }
 
 def abs (x) {
-    res = sqrt(x ^ 2)
+    ret sqrt(x ^ 2)
 }
 
 def equalZero (x) {
-    
     def positive_mod (a, b) {
-        res = a - ((a // b) * b)
+        ret a - ((a // b) * b)
     }
     
     def positive_floor (x) {
-        res = x - positive_mod(x, 1)
+        ret x - positive_mod(x, 1)
     }
     
     def function (x) {
-        res = abs(x) / (abs(x) +1)
+        ret abs(x) / (abs(x) +10) # 10 for "damping", could do with any positive value
     }
     
-    res = positive_floor(1 - function(x))
+    ret positive_floor(1 -function(x))
 }
-
 
 n = -0.2
 res = equalZero(n)
-
-
-
-

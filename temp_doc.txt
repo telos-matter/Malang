@@ -11,14 +11,8 @@ Vars are case sensitive
 def func (
 These need be like this, ) {} can span lines 
 
-For the time being you can only assign to vars inside your scope
-Planning on adding an ext keyword to assign to and reference outside variables, maybe
-Ext  only allows u to set external values in var assign, nothing else, you can still reference
-Outside functions and variables, as long as they are not overshadowed by a local variable
 
 A function is only defined when it hits the } 
-Ofc no recursion and can only call functions above you
-NOPE, it checks
 
 You can define functions inside functions with same name? Yes
 
