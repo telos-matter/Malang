@@ -15,3 +15,4 @@ TODOS:
     I want later on to add possibility to compile alone
     and then to run a compiled source file'''
 - # TODO add possibility to store compiled version as math equation
+- loops

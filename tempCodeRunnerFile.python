@@ -1,0 +1,5 @@
+import math
+
+value = 500
+padding = 3 -(math.floor(math.log10(value)) +1)
+print(padding)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import os, math
 from core import OP_SET, Instruction
 from typing import Type
 from enum import Enum, auto
@@ -24,6 +24,8 @@ class TokenType (Enum):
     EOC         = auto() # End of Content # This one is not used really
     EXT_KW      = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
     RET_KW      = auto() # The `ret` keyword to return values
+    UNARY_ALS   = auto() # Unary aliases. They start with $
+    BINARY_ALS  = auto() # Binary aliases. They start with @
 
 class Token ():
     def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
@@ -68,6 +70,9 @@ class Token ():
     def __hash__(self) -> int:
         '''Hash based on the `type` and the `lexeme`'''
         return hash((self.type, self.lexeme))
+    
+    def __str__(self) -> str:
+        return self.line[self.char_number -1 : self.char_number -1 +self.span]
     
     def __repr__(self) -> str:
         return str(self.lexeme)
@@ -152,7 +157,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         number += line[j]
                         j += 1
                     try:
-                        number = float(number)
+                        number = float(number) # Floats are limited
                         if int(number) == number:
                             number = int(number)
                     except ValueError:
@@ -217,6 +222,31 @@ def parseSourceFile (file_path: str) -> list[Token]:
                 elif char == ';':
                     tokens.append(Token(TokenType.SEMICOLON, char, line, len(char), file_path, line_index, i))
                     i += 1
+                
+                elif char in ['$', '@']:
+                    alias = ''
+                    j = i +1
+                    while j < len(line) and not line[j].isspace():
+                        alias += line[j]
+                        j += 1
+                    tokenType = TokenType.UNARY_ALS if char == '$' else TokenType.BINARY_ALS
+                    tokens.append(Token(tokenType, alias, line, j -i, file_path, line_index, i))
+                    i = j
+                
+                elif char == '"':
+                    string = 0
+                    j = i +1
+                    while j < len(line) and not line[j] == '"': # FIXME , did so just to have fun with it. Throw error if no end
+                        value = ord(line[j])
+                        if value < 100:
+                            padding = 2 -(math.floor(math.log10(value)) +1) # Would not work for 0
+                            string *= 10**padding
+                        string *= 1000
+                        string += value
+                        j += 1
+                    j += 1
+                    tokens.append(Token(TokenType.NUMBER, string, line, j -i, file_path, line_index, i))
+                    i = j
                 
                 elif char == '#':
                     # A line comment, go to the next line
@@ -1019,6 +1049,22 @@ def compile (args: dict) -> None:
     if INTERPRET:
         if result in [0, 1]:
             result = bool(result)
+        elif result > 99:
+            chars = ''
+            iteration = 0
+            buffer = 0
+            while result > 0:
+                num = result % 10
+                result //= 10
+                buffer += num * 10**iteration
+                iteration += 1
+                if iteration == 3:
+                    chars += (chr(int(buffer)))
+                    buffer = 0
+                    iteration = 0
+            if iteration != 0:
+                chars += (chr(int(buffer)))
+            result = chars[:: -1]
     
     print(result)
     if DEBUG:

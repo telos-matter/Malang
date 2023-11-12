@@ -9,7 +9,7 @@ if __name__ == '__main__':
         )
     
     parser.add_argument('-d', '--debug', action='store_true', help='Run with debug info')
-    parser.add_argument('-i', '--interpret', action='store_true', help='Interpret the output as TRUE or FALSE if possible') # This would be fire with list, cuz we'll be able to show "Hello World!"
+    parser.add_argument('-i', '--interpret', action='store_true', help='Tries to interpret the output if possible. For numbers with 3 digits or more it would interpret every 3 digits starting from right to left as an ASCII character. For 1 and 0 it would interpret them as TRUE and FALSE')
     parser.add_argument('file_path')
     
     args = vars(parser.parse_args())

@@ -4,10 +4,6 @@ FALSE = 0
 PI = 3.141592653589793
 E = 2.718281828459045
 
-def bool (x) {
-    # TODO impl, parse as bool
-}
-
 def sqrt (x) {
     ret x ^ 0.5
 }
@@ -16,8 +12,9 @@ def abs (x) {
     ret sqrt(x ^ 2)
 }
 
-def equalZero (x) {
-    # The backbone of this whole thing 😂
+def null (x) {
+    # Checks if a number is null, a.k.a equal to zero
+    # Also the backbone of this whole thing
     
     def positiveMod (a, b) {
         ret a - ((a // b) * b)
@@ -34,111 +31,126 @@ def equalZero (x) {
     ret positiveFloor(1 -function(x))
 }
 
-def null (x) {
-    # An alias
-    ret equalZero(x)
-}
-
+$!
 def not (bool) {
     ret (bool - 1) / -1
 }
 
+def parseBool (n) {
+    # 0 -> False, anything else -> True
+    ret $! null(n)
+}
+
+@!=
 def diffNumber (a, b) {
     ret not(null(a - b))
 }
 
+@==
 def equalNumber (a, b) {
-    ret not(diffNumber(a, b))
+    ret $! (a @!= b)
 }
 
 def if (bool, a, b) {
+    # If bool is true return a otherwise return b
     ret (bool * a) - (bool - 1) * b
 }
 
+@&
 def and (bool_1, bool_2) {
     ret bool_1 * bool_2
 }
 
+@|
 def or (bool_1, bool_2) {
-    both_zero = and(null(bool_1), null(bool_2))
+    both_zero = null(bool_1) @& null(bool_2)
     ret if(both_zero, 0, 1)
 }
 
+@^
 def xor (bool_1, bool_2) {
-    ret if(and(bool_1, bool_2), 0, or(bool_1, bool_2))
+    ret if(
+        bool_1 @& bool_2,
+        0,
+        bool_1 @| bool_2)
 }
 
+@!&
 def nand (bool_1, bool_2) {
-    ret not(and(bool_1, bool_2))
+    ret $! (bool_1 @& bool_2)
 }
 
+@!|
 def nor (bool_1, bool_2) {
-    ret not(or(bool_1, bool_2))
+    ret $! (bool_1 @| bool_2)
 }
 
 def xnor (bool_1, bool_2) {
-    ret not(xor(bool_1, bool_2))
+    ret &! (bool_1 $^ bool_2)
 }
 
 def diffSign (a, b) {
     # negative, positive or null
     
-    both_zero = and(null(a), null(b))
+    both_zero = null(a) @& null(b)
     
     else_res = {
-        one_zero = or(null(a), null(b))
+        one_zero = null(a) @| null(b)
         
-        ret if(one_zero, 1, {
-            diffNumber(a * b, abs(a) * abs(b))
-        })
+        ret if(
+            one_zero,
+            1,
+            (a * b) @!= (abs(a) * abs(b)))
     }
     
     ret if(both_zero, 0, else_res)
 }
 
 def sameSign (a, b) {
-    ret not(diffSign(a, b))
-}
-
-def greaterZero (x) {
-    ret if(null(x), 0, diffSign(x, -1))
+    ret $! diffSign(a, b)
 }
 
 def positive (x) {
-    # Alias
-    ret greaterZero(x)
+    # Checks if a number is positive: x > 0
+    ret if(
+        null(x),
+        0,
+        diffSign(x, -1))
 }
 
+@>
 def greater (a, b) {
-    ret greaterZero(a - b)
-}
-
-def lessZero (x) {
-    ret if(null(x), 0, diffSign(x, 1))
+    ret positive(a - b)
 }
 
 def negative (x) {
-    # Alias
-    ret lessZero(x)
+    # Checks if a number is negative: x < 0
+    ret if(
+        null(x),
+        0,
+        diffSign(x, 1))
 }
 
+@<
 def less (a, b) {
-    ret lessZero(a - b)
+    ret negative(a - b)
 }
 
-def greaterEqualZero (x) {
-    ret or(null(x), greaterZero(x))
-}
-
+@>=
 def greaterEqual (a, b) {
+    def greaterEqualZero (x) {
+        ret null(x) @| positive(x)
+    }
+    
     ret greaterEqualZero(a - b)
 }
 
-def lessEqualZero (x) {
-    ret or(null(x), lessZero(x))
-}
-
+@<=
 def lessEqual (a, b) {
+    def lessEqualZero (x) {
+        ret null(x) @| negative(x)
+    }
+    
     ret lessEqualZero(a - b)
 }
 
@@ -155,57 +167,78 @@ def sign (x) {
 }
 
 def max (a, b) {
-    ret if(greater(a, b), a, b)
+    ret if(a @> b, a, b)
 }
 
 def min (a, b) {
-    ret if(less(a, b), a, b)
+    ret if(a @< b, a, b)
 }
 
+@%
 def mod (a, b) {
-    #def positiveMod (a, b) {
-    #    ret a - ((a // b) * b)
-    #}
-    # TODO impl
+    def positiveMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+    
     ret if(
         negative(a),
-        b - (abs(a) - ((abs(a) // b) * b)),
-        a - ((a // b) * b)
+        {
+            a = abs(a)
+            ret b - positiveMod(a, b)
+        },
+        positiveMod(a, b)
     )
 }
 
 def floor (x) {
-    ret x - mod(x, 1)
+    ret x - (x @% 1)
 }
 
 def int (x) {
+    # Only the integer part
     ret sign(x) * floor(abs(x))
 }
 
 def ceil (x) {
-    ret if(equalNumber(int(x), x), x, floor(x) + 1)
+    ret if(
+        int(x) @== x,
+        x,
+        floor(x) + 1)
 }
 
 def decimal (x) {
+    # Only the decimal part
     ret x - int(x)
 }
 
-#def round (x) {
-#    ret mul(sign(x), _if(less(decimal(abs(x)), 0.5), _int(abs(x)), add(_int(abs(x)), 1)))
-#}
+def round (x) {
+    sign = sign(x)
+    x = abs(x)
+    ret sign * if(
+                decimal(x) @< 0.5,
+                int(x),
+                int(x) + 1)
+}
 
+@/?
 def divisible (a, b) {
-    ret null(mod(a, b))
+    ret null(a @% b)
 }
 
 def even (x) {
-    ret divisible(x, 2)
+    ret x @/? 2
 }
 
 def odd (x) {
-    ret not(even(x))
+    ret $! even(x)
 }
 
-def fizzBuzz (n) {
+$++
+def inc (x) {
+    ret x + 1
+}
 
+$--
+def dec (x) {
+    ret x - 1
 }

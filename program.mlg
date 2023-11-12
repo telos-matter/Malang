@@ -1,5 +1,4 @@
+#include std
 
-include std
-
-ret divisible(10, 2)
+ret "Hello world!"
 
