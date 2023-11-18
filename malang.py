@@ -16,3 +16,6 @@ if __name__ == '__main__':
     
     from compiler import compile
     compile(args)
+
+else:
+    raise Exception(f"This file is expected to be run as the main one")
