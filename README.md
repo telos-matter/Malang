@@ -3,7 +3,8 @@
 
 Programming using, literally, only math
 
-Still working on it, but for a quick demo check the lexer.py
+Still working on it;
+want to add some sugar to it but it works
 
 <br>
 
