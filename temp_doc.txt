@@ -34,3 +34,7 @@ Also I wanna add a ret keyword that either returns what's in front of it or res 
 
 
 Negative number exists as they re so -5^2 == 25 but - 5^2 is -25
+
+Alias func_call can't be on a new instruction (just for ease of dev and also makes alaises nicer)
+
+Alises take all of what's on the left and what's immediately on the right

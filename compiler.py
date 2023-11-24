@@ -302,12 +302,22 @@ class Node():
             - `value`: a value element representing their content
         - `FUNC_DEF`:
             - `func`: an identifier token representing the function being defined
+            - `has_als`: a boolean indicating whether this function has an alias
+            - `als`: a Token.UNARY_ALS or Token.BINARY_ALS depending on the
+            number of `params` that represents the alias of this function. Exists
+            if and only if `has_als` is `True`
             - `params`: a list of identifier tokens representing the parameters
             - `body`: a list of nodes (another AST, but without the root node) 
             representing the body of the function. It
             can contain any other node, including another Node.FUNC_DEF
         - `FUNC_CALL`:
-            - `func`: an identifier token representing the function being called
+            - `with_als`: a boolean indicating whether this function call is done
+            trough an alias or trough an identifier
+            - `func`: an identifier token representing the function being called, exists
+            if and only if `with_als` is `False`
+            - `als`: a Token.UNARY_ALS or Token.BINARY_ALS representing the alias
+            that this function is referring to with this call, exists if and
+            only if `with_als` is `True`
             - `args`: a list of value elements representing the arguments
         - `ANON_FUNC`:
             - `starter`: an open curly bracket representing the start of the anonymous function
@@ -330,7 +340,9 @@ class Node():
     def isInstructionNode (self) -> bool:
         '''Whether this Node is an instruction node or not\n
         Instruction nodes are the only Nodes that can start new instructions'''
-        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_CALL, NodeType.FUNC_DEF, NodeType.ANON_FUNC, NodeType.RETURN]
+        if self.type == NodeType.FUNC_CALL:
+            return self.components['with_als'] == False
+        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_DEF, NodeType.ANON_FUNC, NodeType.RETURN]
     
     def __repr__(self) -> str:
         return f"{self.type}\n\t=> {self.components}"
@@ -420,14 +432,21 @@ def constructAST (tokens: list[Token]) -> Node:
             '''Returns the immediate next singleton
             value starting from `start_index` along side the index
             on which to continue.\n
-            A singleton value is a value element that exists on it's own. The
-            only value element that is an exception to this is Node.OP, as it requires
-            two value elements\n
+            Check the function below to see what a singleton value is
             `tokens`: normally, a list of all the tokens\n
             `parent_token`: the token that "wants" this singleton value. To raise a SyntaxError with in case of an error\n
             `start_index`: from where to start\n
             `skip_eols`: whether to skip EOLs until you find a value or not, meaning one should be
             the immediate next'''
+            
+            def isSingletonValue (value: Node | Token) -> bool:
+                '''A singleton value is a value element that exists on it's own. The
+                only value elements that are an exception to this are Node.OP and 
+                Node.FUNC_CALL['als'] == TokenType.BINARY_ALS, as they require
+                two value elements, one before and one after\n'''
+                opNode = type(value) == Node and value.type == NodeType.OP
+                binaryFuncCall = type(value) == Node and value.type == NodeType.FUNC_CALL and value.components['with_als'] and value.components['als'] == TokenType.BINARY_ALS
+                return isValueElement(value) and not opNode and not binaryFuncCall
             
             i = start_index # Just for ease of reference
             
@@ -444,8 +463,8 @@ def constructAST (tokens: list[Token]) -> Node:
                     singleton_value_element = token
                     i += 1
                 
-                elif tokenType == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL
-                    if i +1 < len(tokens) and tokens[i +1].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                elif tokenType == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL['with_als'] == False
+                    if i +1 < len(tokens) and tokens[i +1].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL['with_als'] == False
                         singleton_value_element, i = processFuncCall(tokens, token, i +1)
                     
                     else: # A variable
@@ -461,12 +480,16 @@ def constructAST (tokens: list[Token]) -> Node:
                 elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
                     singleton_value_element, i = processAnonFunc(tokens, i)
                 
+                elif tokenType == TokenType.UNARY_ALS: # Node.FUNC_CALL['als'] == TokenType.UNARY_ALS
+                    single_arg, i = nextSingletonValue(tokens, token, i +1, False)
+                    singleton_value_element = Node(NodeType.FUNC_CALL, with_als=True, als=token, args=[single_arg])
+                
                 else:
                     syntaxError(f"A value is required after this `{parent_token}`, found this instead `{token}`", token)
             else:
                 syntaxError(f"Expected some value after this `{parent_token}`", parent_token)
             
-            assert isValueElement(singleton_value_element) and (type(singleton_value_element) != Node or singleton_value_element.type != NodeType.OP), f"UNREACHABLE" # OCD
+            assert isSingletonValue(singleton_value_element), f"UNREACHABLE" # OCD be OCDing
             return (singleton_value_element, i)
         
         def appendOP (root_op_node: Node, op: Token, r_value: Token | Node) -> Node:
@@ -496,7 +519,7 @@ def constructAST (tokens: list[Token]) -> Node:
         i = start_index # Just for ease of reference
         buffer, i = nextSingletonValue(tokens, parent_token, i, skip_eols)
         
-        while i < len(tokens): # Append Node.OPs if there is something left
+        while i < len(tokens): # Node.OP or Node.FUNC_CALL['als'] == Token.BINARY_ALS
             token = tokens[i]
             tokenType = token.type
             
@@ -508,6 +531,11 @@ def constructAST (tokens: list[Token]) -> Node:
                 else: # Otherwise create one
                     buffer = Node(NodeType.OP, op=token, l_value=l_value, r_value=r_value)
             
+            elif tokenType == TokenType.BINARY_ALS: # Node.FUNC_CALL['als'] == Token.BINARY_ALS
+                first_arg = buffer
+                second_arg, i = nextSingletonValue(tokens, token, i +1, False)
+                buffer = Node(NodeType.FUNC_CALL, with_als=True, als=token, args=[first_arg, second_arg])
+            
             elif tokenType == TokenType.EOL:
                 if skip_eols:
                     i += 1
@@ -518,23 +546,23 @@ def constructAST (tokens: list[Token]) -> Node:
                 if accepts_comas:
                     break
                 else:
-                    syntaxError(f"This comma can't be here", token)
+                    syntaxError(f"Commas can't be here", token)
             
             elif tokenType == TokenType.SEMICOLON:
                 if accepts_semicolons:
                     break
                 else:
-                    syntaxError(f"This semicolon can't be here", token)
+                    syntaxError(f"Semicolons can't be here", token)
             
             else:
-                syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice) It can't be there", token)
+                syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice). Expected an operation or a binary alias", token)
             
         if not isValueElement(buffer):
             assert False, f"Buffer is not a value element: {buffer}"
         return (buffer, i)
     
     def processFuncCall (tokens: list[Token], func: Token, open_paren_index: int) -> tuple[Node, int]:
-        '''Processes a function call and returns a Node.FUNC_CALL
+        '''Processes a normal function call (no alias) and returns a Node.FUNC_CALL
         and the index at which to continue, which is where the function
         call ends +1\n
         `tokens`: normally, a list of all the tokens\n
@@ -554,7 +582,7 @@ def constructAST (tokens: list[Token]) -> Node:
                 if i +inc < close_paren:
                     assert tokens[i +inc].type == TokenType.COMMA, f"It should only exit if it encountered a comma. Exited on {tokens[i +inc]}"
                 args.append(arg)
-        return (Node(NodeType.FUNC_CALL, func=func, args=args), close_paren +1)
+        return (Node(NodeType.FUNC_CALL, with_als=False, func=func, args=args), close_paren +1)
     
     def processAnonFunc (tokens: list[Token], open_curly_index: int) -> tuple[Node, int]:
         '''Processes an anonymous function and returns a Node.ANON_FUNC
@@ -568,6 +596,68 @@ def constructAST (tokens: list[Token]) -> Node:
         close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, i +1, tokens[i])
         body = construct(tokens[i +1 : close_curly], False)
         return (Node(NodeType.ANON_FUNC, starter=tokens[i], body=body), close_curly +1)
+    
+    def processFuncDef (tokens: list[Token], def_kw_index: int, als: Token | None) -> tuple[Node, int]:
+        '''Processes a function definition and returns a Node.FUNC_DEF
+        and the index at which to continue, which where the function definition
+        ends +1\n
+        `als`: if this function definition is preceded by an alias then
+        this should be a Token.UNARY_ALS or Token.BINARY_ALS, if not
+        then it should be `None`'''
+        i = def_kw_index # Just for ease of reference
+        assert tokens[i].type == TokenType.DEF_KW, f"Not Token.DEF_KW"
+        assert als == None or als.type == TokenType.UNARY_ALS or als.type == TokenType.BINARY_ALS, f"Wrong argument {als}"
+        
+        i += 1
+        if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
+            syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{tokens[i -1]}` keyword", {tokens[i -1]})
+        func = tokens[i]
+        i += 1
+        if len(tokens) <= i or tokens[i].type != TokenType.OPEN_PAREN:
+            syntaxError(f"There should be an open parenthesis right after the function's name to define this function's parameters", tokens[i -1])
+        i += 1
+        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i, tokens[i -1])
+        params = []
+        last_token_was_comma = True # True just to init
+        while i < close_paren:
+            if tokens[i].type == TokenType.EOL:
+                i += 1
+            elif tokens[i].type == TokenType.COMMA:
+                if last_token_was_comma:
+                    message = f"Expected a parameter's name to start with, not a comma" if len(params) == 0 else f"Two consecutive commas. A parameter is missing"
+                    syntaxError(message, tokens[i])
+                else:
+                    last_token_was_comma = True
+                    i += 1
+            elif tokens[i].type == TokenType.IDENTIFIER:
+                if last_token_was_comma:
+                    params.append(tokens[i])
+                    last_token_was_comma = False
+                    i += 1
+                else:
+                    syntaxError(f"Two consecutive parameters. A comma is missing", tokens[i])
+            else:
+                message = f"Expected a parameters' name, not this:" if last_token_was_comma else f"Expected a comma to separate the parameters, not this:"
+                syntaxError(message, tokens[i])
+        if len(params) != 0 and last_token_was_comma:
+            syntaxError(f"There is an extra comma before this closing parenthesis, remove it", tokens[i])
+        open_curly = isNextToken(tokens, TokenType.OPEN_CURLY, i +1, (f"Couldn't find an open curly bracket to start the body of the function after this:", tokens[i]))
+        close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, open_curly +1, tokens[open_curly])
+        body = construct(tokens[open_curly +1 : close_curly], False)
+        func_def = None
+        if als == None:
+            func_def = Node(NodeType.FUNC_DEF, func=func, has_als=False, params=params, body=body)
+        else:
+            if als.type == TokenType.UNARY_ALS:
+                if len(params) != 1:
+                    syntaxError(f"This function definition is preceded with an unary alias yet it doesn't have one parameter, instead it has {len(params)} parameters", tokens[def_kw_index])
+            elif als.type == TokenType.BINARY_ALS:
+                if len(params) != 2:
+                    syntaxError(f"This function definition is preceded with an binary alias yet it doesn't have two parameter, instead it has {len(params)} parameter(s)", tokens[def_kw_index])
+            else:
+                assert False, f"Unreachable"
+            func_def = Node(NodeType.FUNC_DEF, func=func, has_als=True, als=als, params=params, body=body)
+        return (func_def, close_curly +1)
     
     def construct (tokens: list[Token], root: bool) -> Node | list[Node]:
         '''The actual function that constructs
@@ -615,45 +705,14 @@ def constructAST (tokens: list[Token]) -> Node:
                 else:
                     syntaxError(f"Was not expecting this `{tokens[i]}` after an identifier", tokens[i])
             
-            elif tokenType == TokenType.DEF_KW: # Node.FUNC_DEF:
-                i += 1
-                if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
-                    syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{token}` keyword", token)
-                func = tokens[i]
-                i += 1
-                if len(tokens) <= i or tokens[i].type != TokenType.OPEN_PAREN:
-                    syntaxError(f"There should be an open parenthesis right after the function's name to define this function's parameters", tokens[i])
-                i += 1
-                close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i, tokens[i -1])
-                params = []
-                last_token_was_comma = True # True just to init
-                while i < close_paren:
-                    if tokens[i].type == TokenType.EOL:
-                        i += 1
-                    elif tokens[i].type == TokenType.COMMA:
-                        if last_token_was_comma:
-                            message = f"Expected a parameter's name to start with, not a comma" if len(params) == 0 else f"Two consecutive commas. A parameter is missing"
-                            syntaxError(message, tokens[i])
-                        else:
-                            last_token_was_comma = True
-                            i += 1
-                    elif tokens[i].type == TokenType.IDENTIFIER:
-                        if last_token_was_comma:
-                            params.append(tokens[i])
-                            last_token_was_comma = False
-                            i += 1
-                        else:
-                            syntaxError(f"Two consecutive parameters. A comma is missing", tokens[i])
-                    else:
-                        message = f"Expected a parameters' name, not this:" if last_token_was_comma else f"Expected a comma to separate the parameters, not this:"
-                        syntaxError(message, tokens[i])
-                if len(params) != 0 and last_token_was_comma:
-                    syntaxError(f"There is an extra comma before this closing parenthesis, remove it", tokens[i])
-                open_curly = isNextToken(tokens, TokenType.OPEN_CURLY, i +1, (f"Couldn't find an open curly bracket to start the body of the function after this:", tokens[i]))
-                close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, open_curly +1, tokens[open_curly])
-                body = construct(tokens[open_curly +1 : close_curly], False)
-                content.append(Node(NodeType.FUNC_DEF, func=func, params=params, body=body))
-                i = close_curly +1
+            elif tokenType == TokenType.DEF_KW: # Node.FUNC_DEF['has_als'] == False
+                func_def, i = processFuncDef(tokens, i, None)
+                content.append(func_def)
+            
+            elif tokenType in [TokenType.UNARY_ALS, TokenType.BINARY_ALS]: # Node.FUNC_DEF['has_als'] == True
+                i = isNextToken(tokens, TokenType.DEF_KW, i +1, (f"A function definition was expected after this alias. Aliases can only be used with function definition when used outside an a value expression", token))
+                func_def, i = processFuncDef(tokens, i, token)
+                content.append(func_def)
             
             elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
                 anon_func, i = processAnonFunc(tokens, i)

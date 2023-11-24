@@ -12,4 +12,3 @@ def fizzBuzz (n) {
     res = if (div_5, "Fizz", 0)
     res = res + if (div_3, "Buzz", n)
 }
-
