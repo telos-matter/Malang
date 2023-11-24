@@ -157,7 +157,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         number += line[j]
                         j += 1
                     try:
-                        number = float(number) # Floats are limited
+                        number = float(number) # Floats are limited # FIXME, if it can be read as a float then its a number but then read it as an int if it passes its an int, dont cast
                         if int(number) == number:
                             number = int(number)
                     except ValueError:

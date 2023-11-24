@@ -86,7 +86,7 @@ def nor (bool_1, bool_2) {
 }
 
 def xnor (bool_1, bool_2) {
-    ret &! (bool_1 $^ bool_2)
+    ret $! (bool_1 $^ bool_2)
 }
 
 def diffSign (a, b) {
