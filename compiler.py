@@ -157,9 +157,12 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         number += line[j]
                         j += 1
                     try:
-                        number = float(number) # Floats are limited # FIXME, if it can be read as a float then its a number but then read it as an int if it passes its an int, dont cast
-                        if int(number) == number:
-                            number = int(number)
+                        original = number
+                        number = float(original) # If it passes this part then it's a number
+                        try:
+                            number = int(original) # Just check if it's an int (Casting won't work as that floats are limited) 
+                        except ValueError:
+                            pass
                     except ValueError:
                         temp_token = Token(None, number, line, j -i, file_path, line_index, i)
                         parsingError(f"Couldn't parse this number: `{number}`", temp_token)
