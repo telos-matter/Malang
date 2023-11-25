@@ -1,14 +1,8 @@
 include std
 
-def fizzBuzz (n) {
-    # Divisible by 5 and 3 -> 'FizzBuzz'
-    # Divisible by 5       -> 'Fizz'
-    # Divisible by 3       -> 'Buzz'
-    # Else                 -> n 
-    
-    div_5 = n @/? 5
-    div_3 = n @/? 3
-    
-    res = if (div_5, "Fizz", 0)
-    res = res + if (div_3, "Buzz", n)
+$suc
+def successor (n) {
+    ret $++ n
 }
+
+ret $suc 68

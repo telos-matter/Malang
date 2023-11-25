@@ -765,25 +765,45 @@ def constructProgram (ast: Node) -> Instruction:
     class Scope:
         
         class FunctionSignature:
-            
-            def __init__(self, identifier: Token, params_count: int) -> None:
-                '''A struct that holds a functions' signature'''
-                assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
-                assert type(params_count) == int, f"Not an int {params_count}"
+            def __init__(self, identifier: Token, als: Token, params_count: int) -> None:
+                '''A struct that refers to / identifies a function, either
+                from a function call or a function definition\n
+                Must have at least the identifier or the als'''
+                assert identifier != None or als != None, f"Either the identifier or the als must be given!"
+                assert identifier == None or identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+                if als is not None:
+                    assert als.type in [TokenType.UNARY_ALS, TokenType.BINARY_ALS], f"Not a Token.XXX_ALS {als}"
+                    if als.type == TokenType.UNARY_ALS:
+                        assert params_count == 1, f"Token.UNARY_ALS with params_count != 1"
+                    elif als.type == TokenType.BINARY_ALS:
+                        assert params_count == 2, f"Token.BINARY_ALS with params_count != 2"
+                    else:
+                        assert False, f"Unreachable, I just checked cases" 
+                
                 self.identifier = identifier
+                self.als = als
                 self.params_count = params_count
             
             @classmethod
             def __fromFuncDef (cls, func_def: Node) -> Scope.FunctionSignature:
                 '''Creates a FunctionSignature from a Node.FUNC_DEF'''
                 assert func_def.type == NodeType.FUNC_DEF, f"Not a Node.FUNC_DEF {func_def}"
-                return cls(func_def.components['func'], len(func_def.components['params']))
+                als = None
+                if func_def.components['has_als']:
+                    als = func_def.components['als']
+                return cls(func_def.components['func'], als, len(func_def.components['params']))
             
             @classmethod
             def __fromFuncCall (cls, func_call: Node) -> Scope.FunctionSignature:
                 '''Creates a FunctionSignature from a Node.FUNC_CALL'''
                 assert func_call.type == NodeType.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
-                return cls(func_call.components['func'], len(func_call.components['args']))
+                identifier = None
+                als = None
+                if func_call.components['with_als']:
+                    als = func_call.components['als']
+                else:
+                    identifier = func_call.components['func']
+                return cls(identifier, als, len(func_call.components['args']))
             
             def __lookLocally(self, scope: Scope) -> Node | None:
                 '''Looks in the local scope for `self`'''
@@ -811,26 +831,22 @@ def constructProgram (ast: Node) -> Instruction:
                 if exists is not None:
                     original = exists.components['func']
                     func = func_def.components['func']
-                    invalidCode(f"This function `{func}`:\n{func.pointOut()}\n{func.location()}\nCannot be defined again as it's already defined here in the same scope:", original)
+                    invalidCode(f"This function `{func}`:\n{func.pointOut()}\n{func.location()}\nCannot be defined again as it's already defined here in the same scope (similar name and parameter count or similar alias):", original)
             
             @classmethod
-            def resolveFuncCall (cls, func_sig: Node | tuple[Token, int], scope: Scope) -> Node:
-                '''Checks scopes recessively for `func_sig`
+            def findFromFuncCall (cls, func_call: Node, scope: Scope) -> Node:
+                '''Checks scopes recessively for the  function corresponding
+                to the `func_call`
                 and returns the Node.FUNC_DEF corresponding to it. Or
-                throws an InvalidCode exception if it didn't find it\n
-                `func_sig`: either a Node.FUNC_CALL or
-                a tuple of Token.IDENTIFIER and the number of params'''
-                
-                if type(func_sig) == tuple:
-                    func_sig = cls(*func_sig)
-                elif type(func_sig) == Node:
-                    func_sig = cls.__fromFuncCall(func_sig)
-                else:
-                    assert False, f"Neither {func_sig}"
-                
+                throws an InvalidCode exception if it didn't find it'''
+                assert func_call.type == NodeType.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
+                func_sig = cls.__fromFuncCall(func_call)
                 func_def = func_sig.__lookRecursively(scope)
                 if func_def is None:
-                    invalidCode(f"Unknown function `{func_sig.identifier}`", func_sig.identifier)
+                    call = func_sig.identifier
+                    if call == None:
+                        call = func_sig.als
+                    invalidCode(f"Unknown function `{call}`", call)
                 else:
                     return func_def
             
@@ -840,14 +856,16 @@ def constructProgram (ast: Node) -> Instruction:
                 an existing function (in local scope or parent ones),
                 if not its an InvalidCode exception'''
                 assert func_call.type == NodeType.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
-                cls.resolveFuncCall(func_call, scope)
+                cls.findFromFuncCall(func_call, scope)
                 return
             
             def __eq__(self, other: object) -> bool:
                 '''Two FunctionSignatures are equal if they
-                have the same `identifier` and `params_count`'''
+                have the same (`identifier` and `params_count`) or same `als`'''
                 if isinstance(other, self.__class__):
-                    return self.identifier == other.identifier and self.params_count == other.params_count
+                    identifierEq = self.identifier != None and self.identifier == other.identifier and self.params_count == other.params_count
+                    alsEq = self.als != None and self.als == other.als
+                    return identifierEq or alsEq
                 else:
                     return False
         
@@ -861,7 +879,7 @@ def constructProgram (ast: Node) -> Instruction:
             - `return_var`: the return variable of this scope
             that is synthesized from the `starter`\n
             - `vars`: a `dict` that maps a Token.IDENTIFIER to an Instruction / Number\n
-            - `funcs`: a `list` of Node.FUNC_DEFs'''
+            - `funcs`: a `list` of Node.FUNC_DEF'''
             
             return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, *starter.getSynthesizedInfo())
             
@@ -872,8 +890,10 @@ def constructProgram (ast: Node) -> Instruction:
         
         def resolveVar (self, identifier: Token) -> Number | Instruction:
             '''Looks for the variable recursively and returns its state\n
-            If it doesn't exist it an InvalidCode exception'''
+            If it doesn't exist then its an InvalidCode exception'''
+            
             assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            
             scope = self
             while scope is not None:
                 if identifier in scope.vars:
@@ -881,16 +901,17 @@ def constructProgram (ast: Node) -> Instruction:
                 scope = scope.parent
             invalidCode(f"Unknown variable `{identifier}`", identifier)
         
-        def resolveFunc (self, identifier: Token, args: list[Number | Instruction]) -> Number | Instruction:
+        def resolveFuncCall (self, func_call: Node, args: list[Number | Instruction]) -> Number | Instruction:
             '''Looks for the function recursively and
-            evaluates it with the given arguments'''
+            calls (evaluates) it with the given arguments. If
+            the function does not exists then its an InvalidCode exception'''
             
-            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            assert func_call.type == NodeType.FUNC_CALL, f"Not Node.FUNC_CALL {func_call}"
             
-            func_def = Scope.FunctionSignature.resolveFuncCall((identifier, len(args)), self)
+            func_def = Scope.FunctionSignature.findFromFuncCall(func_call, self)
             func_scope = Scope(self, func_def.components['func'])
             params = func_def.components['params']
-            assert len(args) == len(params), f"Unreachable" # resolveFuncCall already checks
+            assert len(args) == len(params), f"Unreachable" # The correct fun_def is returned
             for param, arg in zip(params, args):
                 func_scope.setVarState(param, False, arg)
             return evaluateScope(func_def.components['body'], func_scope)
@@ -900,29 +921,27 @@ def constructProgram (ast: Node) -> Instruction:
             it, unless it's an external variable, then it's an InvalidCode exception'''
             assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
             if ext:
-                scope = self
-                while True:
-                    scope = scope.parent
-                    if scope == None:
-                        break
+                scope = self.parent # Since ext, self is skipped
+                while scope is not None:
                     if identifier in scope.vars:
                         scope.vars[identifier] = state
                         return
+                    scope = scope.parent
                 invalidCode(f"This external variable does not exists", identifier)
             else:
                 self.vars[identifier] = state
         
         def addFunc (self, func_def: Node) -> None:
-            '''Adds a Node.FUNC_DEF to the scope if it doesn't
-            already exist (in that scope) after validating it,
-            otherwise if it exists or is invalid InvalidCode exception\n
+            '''Adds a Node.FUNC_DEF to the scope (as a Scope.Function) if it doesn't
+            already exist (in that scope), after validating it.
+            Otherwise, if it exists or is invalid, throw an InvalidCode exception\n
             #### How it works:
             Simply check if this function already exists in this scope
             and check if you call any unknown functions. Simple as that.
             Also you don't add a function, meaning you don't define a function,
-            unless it's valid
+            unless it's valid, so that removes recursion.
             #### Reminder for my self:
-            You may be like "hey, well since when I call a function
+            You may be like "Hey, well since when I call a function
             I check if it exists, why do it here. Here let's just
             check if it already exists in the scope and that's it"
             The problem with that would be that you could add a function
@@ -1038,7 +1057,7 @@ def constructProgram (ast: Node) -> Instruction:
                     args = []
                     for arg in value_element.components['args']:
                         args.append(processValueElement(arg, scope))
-                    return scope.resolveFunc(value_element.components['func'], args)
+                    return scope.resolveFuncCall(value_element, args)
                 
                 elif value_element.type == NodeType.ANON_FUNC:
                     return evaluateScope(value_element.components['body'], (scope, value_element.components['starter']))
@@ -1111,6 +1130,8 @@ def compile (args: dict) -> None:
     if INTERPRET:
         if result in [0, 1]:
             result = bool(result)
+        elif result == 69:
+            result = 'Nice'
         elif result > 99:
             chars = ''
             iteration = 0
