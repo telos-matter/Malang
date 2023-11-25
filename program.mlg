@@ -1,2 +1,6 @@
+include std
+include assertion
 
-ret "Hello, World!"
+foo = 34 + 34
+
+ret assert(foo @== 69, foo)

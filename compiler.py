@@ -1253,6 +1253,6 @@ def compile (args: dict) -> None:
     
     print(result)
     if DEBUG:
-        print(f"The result of the program is: {result}")
+        print(f"The result of the program is {result}")
         print(f"It was computed in {time} seconds")
         print(f"It took {count} instructions to compute the result")

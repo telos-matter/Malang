@@ -1,0 +1,9 @@
+# Library that provides single function, that of assertion
+
+def assert (bool, ret_value) {
+    # Assert that bool is True by
+    # dividing on it (If it's False then zero devision error)
+    # If true, return ret_value
+    
+    ret (1/bool) * ret_value
+}
