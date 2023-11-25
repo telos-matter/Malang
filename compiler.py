@@ -20,7 +20,7 @@ class Token ():
         DEF_KW        = auto() # The `def` keyword to declare functions
         OPEN_CURLY    = auto() # Opening curly brackets `{`
         CLOSE_CURLY   = auto() # Closing curly brackets `}`
-        COMMA         = auto() # The `,` that separates the params and args
+        COMMA         = auto() # The `,` that separates the params, args or list elements
         SEMICOLON     = auto() # `;` to end expressions (not required)
         BOC           = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
         EOC           = auto() # End of Content # This one is not used really
@@ -30,11 +30,43 @@ class Token ():
         BINARY_ALS    = auto() # Binary aliases. They start with @
         OPEN_BRACKET  = auto() # Opening bracket `[`
         CLOSE_BRACKET = auto() # Closing bracket `]`
+        
+        @property
+        def lexeme (self) -> str:
+            '''Returns the lexeme for Token.Types that have a fixed lexeme'''
+            if self == Token.Type.EOL:
+                return '\n' # Fuck Windows' new lines
+            elif self == Token.Type.OPEN_PAREN:
+                return '('
+            elif self == Token.Type.CLOSE_PAREN:
+                return ')'
+            elif self == Token.Type.ASSIGN_OP:
+                return '='
+            elif self == Token.Type.DEF_KW:
+                return 'def'
+            elif self == Token.Type.OPEN_CURLY:
+                return '{'
+            elif self == Token.Type.CLOSE_CURLY:
+                return '}'
+            elif self == Token.Type.COMMA:
+                return ','
+            elif self == Token.Type.SEMICOLON:
+                return ';'
+            elif self == Token.Type.EXT_KW:
+                return 'ext'
+            elif self == Token.Type.RET_KW:
+                return 'ret'
+            elif self == Token.Type.OPEN_BRACKET:
+                return '['
+            elif self == Token.Type.CLOSE_BRACKET:
+                return ']'
+            else:
+                assert False, f"Tried getting the lexeme of a Token.Type that isn't fixed"
     
     def __init__(self, tokenType: Token.Type, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
         '''`line`: the actual line, the string in which this Token exists\n
         `span`: the length of the Token in the line\n
-        `synthesized`: refers to whether the token was created by the compiler, for example -foo => (-1 * foo)
+        `synthesized`: refers to whether the token was created by the compiler
         '''
         self.type = tokenType
         self.lexeme = lexeme
@@ -229,11 +261,11 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokens.append(Token(Token.Type.OP, char, line, len(char), file_path, line_index, i))
                     i += len(char)
                 
-                elif char == '(':
+                elif char == Token.Type.OPEN_PAREN.lexeme:
                     tokens.append(Token(Token.Type.OPEN_PAREN, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
-                elif char == ')':
+                elif char == Token.Type.CLOSE_PAREN.lexeme:
                     tokens.append(Token(Token.Type.CLOSE_PAREN, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
@@ -245,13 +277,13 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         j += 1
                     
                     tokenType = None
-                    if identifier == 'def':
+                    if identifier == Token.Type.DEF_KW.lexeme:
                         tokenType = Token.Type.DEF_KW
                     
-                    elif identifier == 'ext':
+                    elif identifier == Token.Type.EXT_KW.lexeme:
                         tokenType = Token.Type.EXT_KW
                     
-                    elif identifier == 'ret':
+                    elif identifier == Token.Type.RET_KW.lexeme:
                         tokenType = Token.Type.RET_KW
                     
                     elif identifier == 'include':
@@ -264,23 +296,23 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokens.append(Token(tokenType, identifier, line, j -i, file_path, line_index, i))
                     i = j
                 
-                elif char == '{':
+                elif char == Token.Type.OPEN_CURLY.lexeme:
                     tokens.append(Token(Token.Type.OPEN_CURLY, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
-                elif char == '}':
+                elif char == Token.Type.CLOSE_CURLY.lexeme:
                     tokens.append(Token(Token.Type.CLOSE_CURLY, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
-                elif char == '=':
+                elif char == Token.Type.ASSIGN_OP.lexeme:
                     tokens.append(Token(Token.Type.ASSIGN_OP, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
-                elif char == ',':
+                elif char == Token.Type.COMMA.lexeme:
                     tokens.append(Token(Token.Type.COMMA, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
-                elif char == ';':
+                elif char == Token.Type.SEMICOLON.lexeme:
                     tokens.append(Token(Token.Type.SEMICOLON, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
@@ -294,29 +326,21 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokens.append(Token(tokenType, alias, line, j -i, file_path, line_index, i))
                     i = j
                 
-                elif char == '[':
+                elif char == Token.Type.OPEN_BRACKET.lexeme:
                     tokens.append(Token(Token.Type.OPEN_BRACKET, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
-                elif char == ']':
+                elif char == Token.Type.CLOSE_BRACKET.lexeme:
                     tokens.append(Token(Token.Type.CLOSE_BRACKET, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char == '"':
                     string, j = readString(line, i, file_path, line_index)
-                    
-                    string = 0
-                    j = i +1
-                    while j < len(line) and not line[j] == '"': # FIXME , did so just to have fun with it. Throw error if no end
-                        value = ord(line[j])
-                        if value < 100:
-                            padding = 2 -(math.floor(math.log10(value)) +1) # Would not work for 0
-                            string *= 10**padding
-                        string *= 1000
-                        string += value
-                        j += 1
-                    j += 1
-                    tokens.append(Token(Token.Type.NUMBER, string, line, j -i, file_path, line_index, i))
+                    tokens.append(Token(Token.Type.OPEN_BRACKET, Token.Type.OPEN_BRACKET.lexeme, line, 1, file_path, line_index, i, True))
+                    for ci, c in enumerate(string):
+                        tokens.append(Token(Token.Type.NUMBER, ord(c), line, 1, file_path, line_index, i +ci +1, True))
+                        tokens.append(Token(Token.Type.COMMA, Token.Type.COMMA.lexeme, line, 1, file_path, line_index, i +ci +1, True))
+                    tokens.append(Token(Token.Type.CLOSE_BRACKET, Token.Type.CLOSE_BRACKET.lexeme, line, 1, file_path, line_index, j -1, True))
                     i = j
                 
                 elif char == "'":
@@ -338,7 +362,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     temp_token = Token(None, char, line, len(char), file_path, line_index, i)
                     parsingError(f"Unexpected char: `{char}`", temp_token)
             
-            tokens.append(Token(Token.Type.EOL, '\n', line, 1, file_path, line_index, len(line))) # Fuck Windows' new lines
+            tokens.append(Token(Token.Type.EOL, Token.Type.EOL.lexeme, line, 1, file_path, line_index, len(line)))
         
         if main:
             line = '' if len(content) == 0 else content[-1]
