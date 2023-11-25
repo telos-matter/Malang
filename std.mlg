@@ -1,3 +1,5 @@
+# The standard library. Has the basic functions to get you going
+
 TRUE = 1
 FALSE = 0
 
