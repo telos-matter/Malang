@@ -1,5 +1,2 @@
-include rand
 
-next()
-next()
-ret rand(-5, 5)
+ret '\t'

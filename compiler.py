@@ -28,8 +28,8 @@ class Token ():
         RET_KW        = auto() # The `ret` keyword to return values
         UNARY_ALS     = auto() # Unary aliases. They start with $
         BINARY_ALS    = auto() # Binary aliases. They start with @
-#        OPEN_BRACKET  = auto() # Opening bracket `[`
-#        CLOSE_BRACKET = auto() # Closing bracket `]`
+        OPEN_BRACKET  = auto() # Opening bracket `[`
+        CLOSE_BRACKET = auto() # Closing bracket `]`
     
     def __init__(self, tokenType: Token.Type, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
         '''`line`: the actual line, the string in which this Token exists\n
@@ -141,6 +141,57 @@ def parseSourceFile (file_path: str) -> list[Token]:
         `main_file_path`: the main file path, in order
         to resolve includes'''
         
+        def readString (line: str, starter_index: int, file_path: str, line_index: int) -> tuple[str, int]:
+            '''Reads the String that starts from `start_index`
+            and continues until it ends (if it started with `'` then
+            until the next `'`, same for `"`) while taking into
+            consideration escape characters, and returns
+            it (without the quotes) along side
+            where to continue which is where it ends +1\n
+            `file_path` and `line_index` are there just in case
+            we need to raise a parsingError exception'''
+            i = starter_index # For ease of reference
+            starter = line[i]
+            assert starter in ['"', "'"], f"Unknown starter {starter}"
+            
+            ESCAPE_DICT = {
+                'n': '\n',
+                't': '\t',
+                'r': '\r',
+                'b': '\b',
+                'a': '\a',
+                '0': '\0',
+                '\\': '\\',
+                '"': '"',
+                "'": "'"
+            }
+            
+            string = ''
+            i += 1
+            while i < len(line):
+                char = line[i]
+                
+                if char == starter:
+                    return string, i +1
+                
+                elif char == '\\':
+                    if len(line) <= i +1:
+                        temp_token = Token(None, char, line, 1, file_path, line_index, i)
+                        parsingError(f"Invalid escape character. There should be something after `\`", temp_token)
+                    if line[i +1] not in ESCAPE_DICT:
+                        temp_token = Token(None, line[i:i +2], line, 2, file_path, line_index, i)
+                        parsingError(f"Unknown escape character", temp_token)
+                    string += ESCAPE_DICT[line[i +1]]
+                    i += 2
+                
+                else:
+                    string += char
+                    i += 1
+            
+            temp_token = Token(None, starter, line, 1, file_path, line_index, starter_index)
+            message = "Unterminated string literal" if starter == '"' else "Unterminated character literal"
+            parsingError(message, temp_token)
+        
         content = readContent(file_path, main_file_path).splitlines() # Returns an empty list in case of empty content
         tokens = []
         
@@ -196,13 +247,17 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokenType = None
                     if identifier == 'def':
                         tokenType = Token.Type.DEF_KW
+                    
                     elif identifier == 'ext':
                         tokenType = Token.Type.EXT_KW
+                    
                     elif identifier == 'ret':
                         tokenType = Token.Type.RET_KW
+                    
                     elif identifier == 'include':
                         tokens.extend(parse(line[j +1:], False, main_file_path))
                         break
+                    
                     else:
                         tokenType = Token.Type.IDENTIFIER
                     
@@ -239,7 +294,17 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokens.append(Token(tokenType, alias, line, j -i, file_path, line_index, i))
                     i = j
                 
+                elif char == '[':
+                    tokens.append(Token(Token.Type.OPEN_BRACKET, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
+                elif char == ']':
+                    tokens.append(Token(Token.Type.CLOSE_BRACKET, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
                 elif char == '"':
+                    string, j = readString(line, i, file_path, line_index)
+                    
                     string = 0
                     j = i +1
                     while j < len(line) and not line[j] == '"': # FIXME , did so just to have fun with it. Throw error if no end
@@ -252,6 +317,14 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         j += 1
                     j += 1
                     tokens.append(Token(Token.Type.NUMBER, string, line, j -i, file_path, line_index, i))
+                    i = j
+                
+                elif char == "'":
+                    string, j = readString(line, i, file_path, line_index)
+                    if len(string) != 1:
+                        temp_token = Token(None, string, line, j -i, file_path, line_index, i)
+                        parsingError(f"Single quotations must contain one single character", temp_token)
+                    tokens.append(Token(Token.Type.NUMBER, ord(string), line, j -i, file_path, line_index, i))
                     i = j
                 
                 elif char == '#':
