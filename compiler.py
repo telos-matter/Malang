@@ -7,28 +7,29 @@ from enum import Enum, auto
 from numbers import Number
 
 
-class TokenType (Enum):
-    NUMBER      = auto() # Any number
-    OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
-    EOL         = auto() # End of a line
-    OPEN_PAREN  = auto() # Opening parenthesis `(`
-    CLOSE_PAREN = auto() # Closing parenthesis `)`
-    IDENTIFIER  = auto() # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
-    ASSIGN_OP   = auto() # The assigning operation, `=`
-    DEF_KW      = auto() # The `def` keyword to declare functions
-    OPEN_CURLY  = auto() # Opening curly brackets `{`
-    CLOSE_CURLY = auto() # Closing curly brackets `}`
-    COMMA       = auto() # The `,` that separates the params and args
-    SEMICOLON   = auto() # `;` to end expressions (not required)
-    BOC         = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
-    EOC         = auto() # End of Content # This one is not used really
-    EXT_KW      = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
-    RET_KW      = auto() # The `ret` keyword to return values
-    UNARY_ALS   = auto() # Unary aliases. They start with $
-    BINARY_ALS  = auto() # Binary aliases. They start with @
-
 class Token ():
-    def __init__(self, tokenType: TokenType, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
+    class Type (Enum):
+        '''Token types'''
+        NUMBER      = auto() # Any number
+        OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
+        EOL         = auto() # End of a line
+        OPEN_PAREN  = auto() # Opening parenthesis `(`
+        CLOSE_PAREN = auto() # Closing parenthesis `)`
+        IDENTIFIER  = auto() # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
+        ASSIGN_OP   = auto() # The assigning operation, `=`
+        DEF_KW      = auto() # The `def` keyword to declare functions
+        OPEN_CURLY  = auto() # Opening curly brackets `{`
+        CLOSE_CURLY = auto() # Closing curly brackets `}`
+        COMMA       = auto() # The `,` that separates the params and args
+        SEMICOLON   = auto() # `;` to end expressions (not required)
+        BOC         = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
+        EOC         = auto() # End of Content # This one is not used really
+        EXT_KW      = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
+        RET_KW      = auto() # The `ret` keyword to return values
+        UNARY_ALS   = auto() # Unary aliases. They start with $
+        BINARY_ALS  = auto() # Binary aliases. They start with @
+    
+    def __init__(self, tokenType: Token.Type, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
         '''`line`: the actual line, the string in which this Token exists\n
         `span`: the length of the Token in the line\n
         `synthesized`: refers to whether the token was created by the compiler, for example -foo => (-1 * foo)
@@ -57,7 +58,7 @@ class Token ():
     
     def isValueToken (self) -> bool:
         '''Whether this Token is a value element token or not'''
-        return self.type in [TokenType.IDENTIFIER, TokenType.NUMBER]
+        return self.type in [Token.Type.IDENTIFIER, Token.Type.NUMBER]
     
     def __eq__(self, other: object) -> bool:
         '''Two Tokens are equal if they are of the same `type` and
@@ -143,7 +144,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
         
         if main:
             line = '' if len(content) == 0 else content[0]
-            tokens.append(Token(TokenType.BOC, None, line, 0, file_path, 0, 0))
+            tokens.append(Token(Token.Type.BOC, None, line, 0, file_path, 0, 0))
         
         for line_index, line in enumerate(content):
             i = 0
@@ -166,21 +167,21 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     except ValueError:
                         temp_token = Token(None, number, line, j -i, file_path, line_index, i)
                         parsingError(f"Couldn't parse this number: `{number}`", temp_token)
-                    tokens.append(Token(TokenType.NUMBER, number, line, j -i, file_path, line_index, i))
+                    tokens.append(Token(Token.Type.NUMBER, number, line, j -i, file_path, line_index, i))
                     i = j
                 
                 elif char in OP_SET.getSymbols(): # Should be after number to handle negative numbers
                     if char == OP_SET.IDIV.symbol[0] and i +1 < len(line) and line[i +1] == OP_SET.IDIV.symbol[1]: # Handles `//`
                         char = line[i : i +2]
-                    tokens.append(Token(TokenType.OP, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.OP, char, line, len(char), file_path, line_index, i))
                     i += len(char)
                 
                 elif char == '(':
-                    tokens.append(Token(TokenType.OPEN_PAREN, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.OPEN_PAREN, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char == ')':
-                    tokens.append(Token(TokenType.CLOSE_PAREN, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.CLOSE_PAREN, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char == '_' or char.isalpha(): # An identifier, a keyword or include
@@ -192,38 +193,38 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     
                     tokenType = None
                     if identifier == 'def':
-                        tokenType = TokenType.DEF_KW
+                        tokenType = Token.Type.DEF_KW
                     elif identifier == 'ext':
-                        tokenType = TokenType.EXT_KW
+                        tokenType = Token.Type.EXT_KW
                     elif identifier == 'ret':
-                        tokenType = TokenType.RET_KW
+                        tokenType = Token.Type.RET_KW
                     elif identifier == 'include':
                         tokens.extend(parse(line[j +1:], False, main_file_path))
                         break
                     else:
-                        tokenType = TokenType.IDENTIFIER
+                        tokenType = Token.Type.IDENTIFIER
                     
                     tokens.append(Token(tokenType, identifier, line, j -i, file_path, line_index, i))
                     i = j
                 
                 elif char == '{':
-                    tokens.append(Token(TokenType.OPEN_CURLY, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.OPEN_CURLY, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char == '}':
-                    tokens.append(Token(TokenType.CLOSE_CURLY, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.CLOSE_CURLY, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char == '=':
-                    tokens.append(Token(TokenType.ASSIGN_OP, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.ASSIGN_OP, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char == ',':
-                    tokens.append(Token(TokenType.COMMA, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.COMMA, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char == ';':
-                    tokens.append(Token(TokenType.SEMICOLON, char, line, len(char), file_path, line_index, i))
+                    tokens.append(Token(Token.Type.SEMICOLON, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
                 elif char in ['$', '@']:
@@ -232,7 +233,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     while j < len(line) and not line[j].isspace():
                         alias += line[j]
                         j += 1
-                    tokenType = TokenType.UNARY_ALS if char == '$' else TokenType.BINARY_ALS
+                    tokenType = Token.Type.UNARY_ALS if char == '$' else Token.Type.BINARY_ALS
                     tokens.append(Token(tokenType, alias, line, j -i, file_path, line_index, i))
                     i = j
                 
@@ -248,7 +249,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         string += value
                         j += 1
                     j += 1
-                    tokens.append(Token(TokenType.NUMBER, string, line, j -i, file_path, line_index, i))
+                    tokens.append(Token(Token.Type.NUMBER, string, line, j -i, file_path, line_index, i))
                     i = j
                 
                 elif char == '#':
@@ -262,29 +263,31 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     temp_token = Token(None, char, line, len(char), file_path, line_index, i)
                     parsingError(f"Unexpected char: `{char}`", temp_token)
             
-            tokens.append(Token(TokenType.EOL, '\n', line, 1, file_path, line_index, len(line))) # Fuck Windows' new lines
+            tokens.append(Token(Token.Type.EOL, '\n', line, 1, file_path, line_index, len(line))) # Fuck Windows' new lines
         
         if main:
             line = '' if len(content) == 0 else content[-1]
-            tokens.append(Token(TokenType.EOC, None, line, 0, file_path, len(content), len(line)))
+            tokens.append(Token(Token.Type.EOC, None, line, 0, file_path, len(content), len(line)))
         
         return tokens
     
     return parse(file_path, True, file_path)
 
 
-class NodeType (Enum):
-    ROOT        = auto() # Root node of the content. Will only contain instruction nodes. Only 1 exists.
-    VAR_ASSIGN  = auto() # Assigning to a variable
-    OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
-    ORDER_PAREN = auto() # Order parenthesis. They can only contain a value element
-    FUNC_DEF    = auto() # Function definition. Can have nested functions. Functions overloading is allowed
-    FUNC_CALL   = auto() # Function call
-    ANON_FUNC   = auto() # Anonymous function
-    RETURN      = auto() # Return to return from scopes, either a value in front of it or the return variable
 
 class Node():
-    def __init__(self, nodeType: NodeType, **components) -> None:
+    class Type (Enum):
+        '''Node types'''
+        ROOT        = auto() # Root node of the content. Will only contain instruction nodes. Only 1 exists.
+        VAR_ASSIGN  = auto() # Assigning to a variable
+        OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
+        ORDER_PAREN = auto() # Order parenthesis. They can only contain a value element
+        FUNC_DEF    = auto() # Function definition. Can have nested functions. Functions overloading is allowed
+        FUNC_CALL   = auto() # Function call
+        ANON_FUNC   = auto() # Anonymous function
+        RETURN      = auto() # Return to return from scopes, either a value in front of it or the return variable
+    
+    def __init__(self, nodeType: Node.Type, **components) -> None:
         ''' The components that each nodeType has:\n
         - `ROOT`:
             - `boc`: the beginning of content Token
@@ -335,14 +338,14 @@ class Node():
     
     def isValueNode (self) -> bool:
         '''Whether this Node is a value element node or not'''
-        return self.type in [NodeType.OP, NodeType.ORDER_PAREN, NodeType.FUNC_CALL, NodeType.ANON_FUNC]
+        return self.type in [Node.Type.OP, Node.Type.ORDER_PAREN, Node.Type.FUNC_CALL, Node.Type.ANON_FUNC]
     
     def isInstructionNode (self) -> bool:
         '''Whether this Node is an instruction node or not\n
         Instruction nodes are the only Nodes that can start new instructions'''
-        if self.type == NodeType.FUNC_CALL:
+        if self.type == Node.Type.FUNC_CALL:
             return self.components['with_als'] == False
-        return self.type in [NodeType.VAR_ASSIGN, NodeType.FUNC_DEF, NodeType.ANON_FUNC, NodeType.RETURN]
+        return self.type in [Node.Type.VAR_ASSIGN, Node.Type.FUNC_DEF, Node.Type.ANON_FUNC, Node.Type.RETURN]
     
     def __repr__(self) -> str:
         return f"{self.type}\n\t=> {self.components}"
@@ -371,7 +374,7 @@ def constructAST (tokens: list[Token]) -> Node:
         message = "❌ SYNTAX ERROR: " +message +f"\n{token.pointOut()}\n{token.location()}"
         raise Exception(message)
     
-    def findEnclosingToken (tokens: list[Token], opening_tokenType: TokenType, enclosing_tokenType: TokenType, search_from: int, required: Token | None) -> int | None:
+    def findEnclosingToken (tokens: list[Token], opening_tokenType: Token.Type, enclosing_tokenType: Token.Type, search_from: int, required: Token | None) -> int | None:
         '''Returns the index of the enclosing token starting from `search_from`.
         This handles nested tokens such as ((())) for example\n
         `tokens`: normally, a list of all the tokens\n
@@ -395,7 +398,7 @@ def constructAST (tokens: list[Token]) -> Node:
             syntaxError(f"The enclosing element for this one is missing.", required)
         return None
     
-    def isNextToken (tokens: list[Token], tokenType: TokenType, start_from: int, required: tuple[str, Token] | None) -> int | None:
+    def isNextToken (tokens: list[Token], tokenType: Token.Type, start_from: int, required: tuple[str, Token] | None) -> int | None:
         '''Checks if the next token, from `start_from`, is `tokenType`, while skipping over
         Token.EOLs. If it is return its index, otherwise `None`\n
         `required`: if it's required that the next token be `tokenType`
@@ -406,7 +409,7 @@ def constructAST (tokens: list[Token]) -> Node:
         while start_from < len(tokens):
             if tokens[start_from].type == tokenType:
                 return start_from
-            elif tokens[start_from].type == TokenType.EOL:
+            elif tokens[start_from].type == Token.Type.EOL:
                 start_from += 1
             else:
                 break
@@ -442,16 +445,16 @@ def constructAST (tokens: list[Token]) -> Node:
             def isSingletonValue (value: Node | Token) -> bool:
                 '''A singleton value is a value element that exists on it's own. The
                 only value elements that are an exception to this are Node.OP and 
-                Node.FUNC_CALL['als'] == TokenType.BINARY_ALS, as they require
+                Node.FUNC_CALL['als'] == Token.BINARY_ALS, as they require
                 two value elements, one before and one after\n'''
-                opNode = type(value) == Node and value.type == NodeType.OP
-                binaryFuncCall = type(value) == Node and value.type == NodeType.FUNC_CALL and value.components['with_als'] and value.components['als'] == TokenType.BINARY_ALS
+                opNode = type(value) == Node and value.type == Node.Type.OP
+                binaryFuncCall = type(value) == Node and value.type == Node.Type.FUNC_CALL and value.components['with_als'] and value.components['als'] == Token.Type.BINARY_ALS
                 return isValueElement(value) and not opNode and not binaryFuncCall
             
             i = start_index # Just for ease of reference
             
             if skip_eols:
-                while i < len(tokens) and tokens[i].type == TokenType.EOL:
+                while i < len(tokens) and tokens[i].type == Token.Type.EOL:
                     i += 1
             
             singleton_value_element = None
@@ -459,30 +462,30 @@ def constructAST (tokens: list[Token]) -> Node:
                 token = tokens[i]
                 tokenType = token.type
                 
-                if tokenType == TokenType.NUMBER: # Token.NUMBER
+                if tokenType == Token.Type.NUMBER: # Token.NUMBER
                     singleton_value_element = token
                     i += 1
                 
-                elif tokenType == TokenType.IDENTIFIER: # A variable or a Node.FUNC_CALL['with_als'] == False
-                    if i +1 < len(tokens) and tokens[i +1].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL['with_als'] == False
+                elif tokenType == Token.Type.IDENTIFIER: # A variable or a Node.FUNC_CALL['with_als'] == False
+                    if i +1 < len(tokens) and tokens[i +1].type == Token.Type.OPEN_PAREN: # Node.FUNC_CALL['with_als'] == False
                         singleton_value_element, i = processFuncCall(tokens, token, i +1)
                     
                     else: # A variable
                         singleton_value_element = token
                         i += 1
                 
-                elif tokenType == TokenType.OPEN_PAREN: # Node.ORDER_PAREN
-                    close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, token)
+                elif tokenType == Token.Type.OPEN_PAREN: # Node.ORDER_PAREN
+                    close_paren = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, i +1, token)
                     value, _ = processValueExpression(tokens[i +1 : close_paren], token, 0, True, False, False)
-                    singleton_value_element = Node(NodeType.ORDER_PAREN, value=value)
+                    singleton_value_element = Node(Node.Type.ORDER_PAREN, value=value)
                     i = close_paren +1
                 
-                elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
+                elif tokenType == Token.Type.OPEN_CURLY: # Node.ANON_FUNC
                     singleton_value_element, i = processAnonFunc(tokens, i)
                 
-                elif tokenType == TokenType.UNARY_ALS: # Node.FUNC_CALL['als'] == TokenType.UNARY_ALS
+                elif tokenType == Token.Type.UNARY_ALS: # Node.FUNC_CALL['als'] == Token.UNARY_ALS
                     single_arg, i = nextSingletonValue(tokens, token, i +1, False)
-                    singleton_value_element = Node(NodeType.FUNC_CALL, with_als=True, als=token, args=[single_arg])
+                    singleton_value_element = Node(Node.Type.FUNC_CALL, with_als=True, als=token, args=[single_arg])
                 
                 else:
                     syntaxError(f"A value is required after this `{parent_token}`, found this instead `{token}`", token)
@@ -500,19 +503,19 @@ def constructAST (tokens: list[Token]) -> Node:
             \tOtherwise => The `op` is the `root_op_node` new r_value, and its old r_value is the `op`'s l_value (treating
             the r_value in a recursive fashion)\n
             '''
-            assert root_op_node.type == NodeType.OP, f"The root_node is not a Node.OP"
-            assert op.type == TokenType.OP, f"The op is not an op token"
+            assert root_op_node.type == Node.Type.OP, f"The root_node is not a Node.OP"
+            assert op.type == Token.Type.OP, f"The op is not an op token"
             assert isValueElement(r_value), f"Passed an r_value that does not produce value"
             
             if OP_SET.fromSymbol(root_op_node.components['op'].lexeme).precedence >= OP_SET.fromSymbol(op.lexeme).precedence:
-                return Node(NodeType.OP, op=op, l_value=root_op_node, r_value=r_value)
+                return Node(Node.Type.OP, op=op, l_value=root_op_node, r_value=r_value)
             else:
                 root_op_r_value = root_op_node.components['r_value']
                 root_op_new_r_value = None
-                if type(root_op_r_value) == Node and root_op_r_value.type == NodeType.OP:
+                if type(root_op_r_value) == Node and root_op_r_value.type == Node.Type.OP:
                     root_op_new_r_value = appendOP(root_op_r_value, op, r_value)
                 else:
-                    root_op_new_r_value = Node(NodeType.OP, op=op, l_value=root_op_r_value, r_value=r_value)
+                    root_op_new_r_value = Node(Node.Type.OP, op=op, l_value=root_op_r_value, r_value=r_value)
                 root_op_node.components['r_value'] = root_op_new_r_value
                 return root_op_node
         
@@ -523,32 +526,32 @@ def constructAST (tokens: list[Token]) -> Node:
             token = tokens[i]
             tokenType = token.type
             
-            if tokenType == TokenType.OP: # Node.OP
+            if tokenType == Token.Type.OP: # Node.OP
                 l_value = buffer
                 r_value, i = nextSingletonValue(tokens, token, i +1, False)
-                if type(l_value) == Node and l_value.type == NodeType.OP: # If an op is the previous value then append
+                if type(l_value) == Node and l_value.type == Node.Type.OP: # If an op is the previous value then append
                     buffer = appendOP(l_value, token, r_value)
                 else: # Otherwise create one
-                    buffer = Node(NodeType.OP, op=token, l_value=l_value, r_value=r_value)
+                    buffer = Node(Node.Type.OP, op=token, l_value=l_value, r_value=r_value)
             
-            elif tokenType == TokenType.BINARY_ALS: # Node.FUNC_CALL['als'] == Token.BINARY_ALS
+            elif tokenType == Token.Type.BINARY_ALS: # Node.FUNC_CALL['als'] == Token.BINARY_ALS
                 first_arg = buffer
                 second_arg, i = nextSingletonValue(tokens, token, i +1, False)
-                buffer = Node(NodeType.FUNC_CALL, with_als=True, als=token, args=[first_arg, second_arg])
+                buffer = Node(Node.Type.FUNC_CALL, with_als=True, als=token, args=[first_arg, second_arg])
             
-            elif tokenType == TokenType.EOL:
+            elif tokenType == Token.Type.EOL:
                 if skip_eols:
                     i += 1
                 else:
                     break
             
-            elif tokenType == TokenType.COMMA:
+            elif tokenType == Token.Type.COMMA:
                 if accepts_comas:
                     break
                 else:
                     syntaxError(f"Commas can't be here", token)
             
-            elif tokenType == TokenType.SEMICOLON:
+            elif tokenType == Token.Type.SEMICOLON:
                 if accepts_semicolons:
                     break
                 else:
@@ -569,20 +572,20 @@ def constructAST (tokens: list[Token]) -> Node:
         `func`: a Node.IDENTIFIER representing the function being called\n
         `open_paren_index`: where the function call starts'''
         i = open_paren_index # Just for ease of reference
-        assert func.type == TokenType.IDENTIFIER, f"Not Token.IDENTIFIER"
-        assert tokens[i].type == TokenType.OPEN_PAREN, f"Not Token.OPEN_PAREN"
+        assert func.type == Token.Type.IDENTIFIER, f"Not Token.IDENTIFIER"
+        assert tokens[i].type == Token.Type.OPEN_PAREN, f"Not Token.OPEN_PAREN"
         
-        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i +1, tokens[i])
+        close_paren = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, i +1, tokens[i])
         args = []
-        if isNextToken(tokens, TokenType.CLOSE_PAREN, i +1, None) is None: # If it has some args
+        if isNextToken(tokens, Token.Type.CLOSE_PAREN, i +1, None) is None: # If it has some args
             args_tokens = tokens[i : close_paren] # Contains the `(`
             inc = 0
             while i +inc < close_paren:
                 arg, inc = processValueExpression(args_tokens, args_tokens[inc], inc +1, True, False, True)
                 if i +inc < close_paren:
-                    assert tokens[i +inc].type == TokenType.COMMA, f"It should only exit if it encountered a comma. Exited on {tokens[i +inc]}"
+                    assert tokens[i +inc].type == Token.Type.COMMA, f"It should only exit if it encountered a comma. Exited on {tokens[i +inc]}"
                 args.append(arg)
-        return (Node(NodeType.FUNC_CALL, with_als=False, func=func, args=args), close_paren +1)
+        return (Node(Node.Type.FUNC_CALL, with_als=False, func=func, args=args), close_paren +1)
     
     def processAnonFunc (tokens: list[Token], open_curly_index: int) -> tuple[Node, int]:
         '''Processes an anonymous function and returns a Node.ANON_FUNC
@@ -591,11 +594,11 @@ def constructAST (tokens: list[Token]) -> Node:
         `tokens`: normally, a list of all the tokens\n
         `open_curly_index`: the anonymous function starter'''
         i = open_curly_index # Just for ease of reference
-        assert tokens[i].type == TokenType.OPEN_CURLY, f"Not Token.OPEN_CURLY"
+        assert tokens[i].type == Token.Type.OPEN_CURLY, f"Not Token.OPEN_CURLY"
         
-        close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, i +1, tokens[i])
+        close_curly = findEnclosingToken(tokens, Token.Type.OPEN_CURLY, Token.Type.CLOSE_CURLY, i +1, tokens[i])
         body = construct(tokens[i +1 : close_curly], False)
-        return (Node(NodeType.ANON_FUNC, starter=tokens[i], body=body), close_curly +1)
+        return (Node(Node.Type.ANON_FUNC, starter=tokens[i], body=body), close_curly +1)
     
     def processFuncDef (tokens: list[Token], def_kw_index: int, als: Token | None) -> tuple[Node, int]:
         '''Processes a function definition and returns a Node.FUNC_DEF
@@ -605,31 +608,31 @@ def constructAST (tokens: list[Token]) -> Node:
         this should be a Token.UNARY_ALS or Token.BINARY_ALS, if not
         then it should be `None`'''
         i = def_kw_index # Just for ease of reference
-        assert tokens[i].type == TokenType.DEF_KW, f"Not Token.DEF_KW"
-        assert als == None or als.type == TokenType.UNARY_ALS or als.type == TokenType.BINARY_ALS, f"Wrong argument {als}"
+        assert tokens[i].type == Token.Type.DEF_KW, f"Not Token.DEF_KW"
+        assert als == None or als.type == Token.Type.UNARY_ALS or als.type == Token.Type.BINARY_ALS, f"Wrong argument {als}"
         
         i += 1
-        if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
+        if len(tokens) <= i or tokens[i].type != Token.Type.IDENTIFIER:
             syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{tokens[i -1]}` keyword", {tokens[i -1]})
         func = tokens[i]
         i += 1
-        if len(tokens) <= i or tokens[i].type != TokenType.OPEN_PAREN:
+        if len(tokens) <= i or tokens[i].type != Token.Type.OPEN_PAREN:
             syntaxError(f"There should be an open parenthesis right after the function's name to define this function's parameters", tokens[i -1])
         i += 1
-        close_paren = findEnclosingToken(tokens, TokenType.OPEN_PAREN, TokenType.CLOSE_PAREN, i, tokens[i -1])
+        close_paren = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, i, tokens[i -1])
         params = []
         last_token_was_comma = True # True just to init
         while i < close_paren:
-            if tokens[i].type == TokenType.EOL:
+            if tokens[i].type == Token.Type.EOL:
                 i += 1
-            elif tokens[i].type == TokenType.COMMA:
+            elif tokens[i].type == Token.Type.COMMA:
                 if last_token_was_comma:
                     message = f"Expected a parameter's name to start with, not a comma" if len(params) == 0 else f"Two consecutive commas. A parameter is missing"
                     syntaxError(message, tokens[i])
                 else:
                     last_token_was_comma = True
                     i += 1
-            elif tokens[i].type == TokenType.IDENTIFIER:
+            elif tokens[i].type == Token.Type.IDENTIFIER:
                 if last_token_was_comma:
                     params.append(tokens[i])
                     last_token_was_comma = False
@@ -641,22 +644,22 @@ def constructAST (tokens: list[Token]) -> Node:
                 syntaxError(message, tokens[i])
         if len(params) != 0 and last_token_was_comma:
             syntaxError(f"There is an extra comma before this closing parenthesis, remove it", tokens[i])
-        open_curly = isNextToken(tokens, TokenType.OPEN_CURLY, i +1, (f"Couldn't find an open curly bracket to start the body of the function after this:", tokens[i]))
-        close_curly = findEnclosingToken(tokens, TokenType.OPEN_CURLY, TokenType.CLOSE_CURLY, open_curly +1, tokens[open_curly])
+        open_curly = isNextToken(tokens, Token.Type.OPEN_CURLY, i +1, (f"Couldn't find an open curly bracket to start the body of the function after this:", tokens[i]))
+        close_curly = findEnclosingToken(tokens, Token.Type.OPEN_CURLY, Token.Type.CLOSE_CURLY, open_curly +1, tokens[open_curly])
         body = construct(tokens[open_curly +1 : close_curly], False)
         func_def = None
         if als == None:
-            func_def = Node(NodeType.FUNC_DEF, func=func, has_als=False, params=params, body=body)
+            func_def = Node(Node.Type.FUNC_DEF, func=func, has_als=False, params=params, body=body)
         else:
-            if als.type == TokenType.UNARY_ALS:
+            if als.type == Token.Type.UNARY_ALS:
                 if len(params) != 1:
                     syntaxError(f"This function definition is preceded with an unary alias yet it doesn't have one parameter, instead it has {len(params)} parameters", tokens[def_kw_index])
-            elif als.type == TokenType.BINARY_ALS:
+            elif als.type == Token.Type.BINARY_ALS:
                 if len(params) != 2:
                     syntaxError(f"This function definition is preceded with an binary alias yet it doesn't have two parameter, instead it has {len(params)} parameter(s)", tokens[def_kw_index])
             else:
                 assert False, f"Unreachable"
-            func_def = Node(NodeType.FUNC_DEF, func=func, has_als=True, als=als, params=params, body=body)
+            func_def = Node(Node.Type.FUNC_DEF, func=func, has_als=True, als=als, params=params, body=body)
         return (func_def, close_curly +1)
     
     def construct (tokens: list[Token], root: bool) -> Node | list[Node]:
@@ -667,8 +670,8 @@ def constructAST (tokens: list[Token]) -> Node:
         return a root node or a list of instruction nodes'''
         
         if root:
-            assert tokens[0].type == TokenType.BOC, f"Not Token.BOC {tokens[0]}"
-            assert tokens[-1].type == TokenType.EOC, f"Not Token.EOC {tokens[-1]}"
+            assert tokens[0].type == Token.Type.BOC, f"Not Token.BOC {tokens[0]}"
+            assert tokens[-1].type == Token.Type.EOC, f"Not Token.EOC {tokens[-1]}"
             BOC_TOKEN = tokens[0] # Leave them here so that it would raise an undefined error later on if we try to access them when we shouldn't. An assertion
             EOC_TOKEN = tokens[-1]
             tokens = tokens[1 : -1]
@@ -679,57 +682,57 @@ def constructAST (tokens: list[Token]) -> Node:
             token = tokens[i]
             tokenType = token.type
             
-            if tokenType == TokenType.EXT_KW: # EXT Node.VAR_ASSIGN
+            if tokenType == Token.Type.EXT_KW: # EXT Node.VAR_ASSIGN
                 i += 1
-                if len(tokens) <= i or tokens[i].type != TokenType.IDENTIFIER:
+                if len(tokens) <= i or tokens[i].type != Token.Type.IDENTIFIER:
                     syntaxError(f"Expected a variables' name after the `ext` keyword", token)
                 identifier = tokens[i]
                 i += 1
-                if len(tokens) <= i or tokens[i].type != TokenType.ASSIGN_OP:
+                if len(tokens) <= i or tokens[i].type != Token.Type.ASSIGN_OP:
                     syntaxError(f"Expected an `=` after this variable `{token}` to assign a value to it", tokens[i -1])
                 value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
-                content.append(Node(NodeType.VAR_ASSIGN, var=identifier, ext=True, value=value))
+                content.append(Node(Node.Type.VAR_ASSIGN, var=identifier, ext=True, value=value))
                 
-            elif tokenType == TokenType.IDENTIFIER: # LOCAL Node.VAR_ASSIGN or Node.FUNC_CALL
+            elif tokenType == Token.Type.IDENTIFIER: # LOCAL Node.VAR_ASSIGN or Node.FUNC_CALL
                 if len(tokens) <= i +1:
                     syntaxError(f"Expected something after this identifier", token)
                 i += 1
-                if tokens[i].type == TokenType.ASSIGN_OP: # Node.VAR_ASSIGN
+                if tokens[i].type == Token.Type.ASSIGN_OP: # Node.VAR_ASSIGN
                     value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
-                    content.append(Node(NodeType.VAR_ASSIGN, var=token, ext=False, value=value))
+                    content.append(Node(Node.Type.VAR_ASSIGN, var=token, ext=False, value=value))
                 
-                elif tokens[i].type == TokenType.OPEN_PAREN: # Node.FUNC_CALL
+                elif tokens[i].type == Token.Type.OPEN_PAREN: # Node.FUNC_CALL
                     func_call, i = processFuncCall(tokens, token, i)
                     content.append(func_call)
                 
                 else:
                     syntaxError(f"Was not expecting this `{tokens[i]}` after an identifier", tokens[i])
             
-            elif tokenType == TokenType.DEF_KW: # Node.FUNC_DEF['has_als'] == False
+            elif tokenType == Token.Type.DEF_KW: # Node.FUNC_DEF['has_als'] == False
                 func_def, i = processFuncDef(tokens, i, None)
                 content.append(func_def)
             
-            elif tokenType in [TokenType.UNARY_ALS, TokenType.BINARY_ALS]: # Node.FUNC_DEF['has_als'] == True
-                i = isNextToken(tokens, TokenType.DEF_KW, i +1, (f"A function definition was expected after this alias. Aliases can only be used with function definition when used outside an a value expression", token))
+            elif tokenType in [Token.Type.UNARY_ALS, Token.Type.BINARY_ALS]: # Node.FUNC_DEF['has_als'] == True
+                i = isNextToken(tokens, Token.Type.DEF_KW, i +1, (f"A function definition was expected after this alias. Aliases can only be used with function definition when used outside an a value expression", token))
                 func_def, i = processFuncDef(tokens, i, token)
                 content.append(func_def)
             
-            elif tokenType == TokenType.OPEN_CURLY: # Node.ANON_FUNC
+            elif tokenType == Token.Type.OPEN_CURLY: # Node.ANON_FUNC
                 anon_func, i = processAnonFunc(tokens, i)
                 content.append(anon_func)
             
-            elif tokenType == TokenType.RET_KW: # Node.RETURN
+            elif tokenType == Token.Type.RET_KW: # Node.RETURN
                 i += 1
-                if len(tokens) <= i or tokens[i].type in [TokenType.EOL, TokenType.SEMICOLON]: # Node.RETURN['has_value'] == False
-                    content.append(Node(NodeType.RETURN, has_value=False))
+                if len(tokens) <= i or tokens[i].type in [Token.Type.EOL, Token.Type.SEMICOLON]: # Node.RETURN['has_value'] == False
+                    content.append(Node(Node.Type.RETURN, has_value=False))
                 else: # Node.RETURN['has_value'] == True
                     value, i = processValueExpression(tokens, token, i, False, True, False)
-                    content.append(Node(NodeType.RETURN, has_value=True, value=value))
+                    content.append(Node(Node.Type.RETURN, has_value=True, value=value))
             
-            elif tokenType in [TokenType.EOL, TokenType.SEMICOLON]: # Skip
+            elif tokenType in [Token.Type.EOL, Token.Type.SEMICOLON]: # Skip
                 i += 1
             
-            elif tokenType in [TokenType.BOC, TokenType.EOC]: # Unreachable because they are removed from the list
+            elif tokenType in [Token.Type.BOC, Token.Type.EOC]: # Unreachable because they are removed from the list
                 assert False, f"Unreachable"
             
             else:
@@ -738,7 +741,7 @@ def constructAST (tokens: list[Token]) -> Node:
         for node in content:
             assert node.isInstructionNode(), f"Content has something other than an instruction node {node}"
         if root:
-            return Node(NodeType.ROOT, boc=BOC_TOKEN, content=content, eoc=EOC_TOKEN)
+            return Node(Node.Type.ROOT, boc=BOC_TOKEN, content=content, eoc=EOC_TOKEN)
         else:
             return content
     
@@ -763,19 +766,19 @@ def constructProgram (ast: Node) -> Instruction:
         raise Exception(message)
     
     class Scope:
-        
+    
         class FunctionSignature:
             def __init__(self, identifier: Token, als: Token, params_count: int) -> None:
                 '''A struct that refers to / identifies a function, either
                 from a function call or a function definition\n
                 Must have at least the identifier or the als'''
                 assert identifier != None or als != None, f"Either the identifier or the als must be given!"
-                assert identifier == None or identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+                assert identifier == None or identifier.type == Token.Type.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
                 if als is not None:
-                    assert als.type in [TokenType.UNARY_ALS, TokenType.BINARY_ALS], f"Not a Token.XXX_ALS {als}"
-                    if als.type == TokenType.UNARY_ALS:
+                    assert als.type in [Token.Type.UNARY_ALS, Token.Type.BINARY_ALS], f"Not a Token.XXX_ALS {als}"
+                    if als.type == Token.Type.UNARY_ALS:
                         assert params_count == 1, f"Token.UNARY_ALS with params_count != 1"
-                    elif als.type == TokenType.BINARY_ALS:
+                    elif als.type == Token.Type.BINARY_ALS:
                         assert params_count == 2, f"Token.BINARY_ALS with params_count != 2"
                     else:
                         assert False, f"Unreachable, I just checked cases" 
@@ -787,7 +790,7 @@ def constructProgram (ast: Node) -> Instruction:
             @classmethod
             def __fromFuncDef (cls, func_def: Node) -> Scope.FunctionSignature:
                 '''Creates a FunctionSignature from a Node.FUNC_DEF'''
-                assert func_def.type == NodeType.FUNC_DEF, f"Not a Node.FUNC_DEF {func_def}"
+                assert func_def.type == Node.Type.FUNC_DEF, f"Not a Node.FUNC_DEF {func_def}"
                 als = None
                 if func_def.components['has_als']:
                     als = func_def.components['als']
@@ -796,7 +799,7 @@ def constructProgram (ast: Node) -> Instruction:
             @classmethod
             def __fromFuncCall (cls, func_call: Node) -> Scope.FunctionSignature:
                 '''Creates a FunctionSignature from a Node.FUNC_CALL'''
-                assert func_call.type == NodeType.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
+                assert func_call.type == Node.Type.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
                 identifier = None
                 als = None
                 if func_call.components['with_als']:
@@ -826,7 +829,7 @@ def constructProgram (ast: Node) -> Instruction:
                 '''Checks if a function (in the form of Node.FUNC_DEF)
                 is already defined in this scope (local scope only
                 of course), if it is, throw an InvalidCode exception'''
-                assert func_def.type == NodeType.FUNC_DEF, f"Not a Node.FUNC_DEF {func_def}"
+                assert func_def.type == Node.Type.FUNC_DEF, f"Not a Node.FUNC_DEF {func_def}"
                 exists = cls.__fromFuncDef(func_def).__lookLocally(scope)
                 if exists is not None:
                     original = exists.components['func']
@@ -839,7 +842,7 @@ def constructProgram (ast: Node) -> Instruction:
                 to the `func_call`
                 and returns the Node.FUNC_DEF corresponding to it. Or
                 throws an InvalidCode exception if it didn't find it'''
-                assert func_call.type == NodeType.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
+                assert func_call.type == Node.Type.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
                 func_sig = cls.__fromFuncCall(func_call)
                 func_def = func_sig.__lookRecursively(scope)
                 if func_def is None:
@@ -855,7 +858,7 @@ def constructProgram (ast: Node) -> Instruction:
                 '''Checks if this Node.FUNC_CALL is calling
                 an existing function (in local scope or parent ones),
                 if not its an InvalidCode exception'''
-                assert func_call.type == NodeType.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
+                assert func_call.type == Node.Type.FUNC_CALL, f"Not a Node.FUNC_CALL {func_call}"
                 cls.findFromFuncCall(func_call, scope)
                 return
             
@@ -881,7 +884,7 @@ def constructProgram (ast: Node) -> Instruction:
             - `vars`: a `dict` that maps a Token.IDENTIFIER to an Instruction / Number\n
             - `funcs`: a `list` of Node.FUNC_DEF'''
             
-            return_var = Token(TokenType.IDENTIFIER, RETURN_VAR_NAME, *starter.getSynthesizedInfo())
+            return_var = Token(Token.Type.IDENTIFIER, RETURN_VAR_NAME, *starter.getSynthesizedInfo())
             
             self.parent = parent
             self.return_var = return_var
@@ -892,7 +895,7 @@ def constructProgram (ast: Node) -> Instruction:
             '''Looks for the variable recursively and returns its state\n
             If it doesn't exist then its an InvalidCode exception'''
             
-            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            assert identifier.type == Token.Type.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
             
             scope = self
             while scope is not None:
@@ -906,7 +909,7 @@ def constructProgram (ast: Node) -> Instruction:
             calls (evaluates) it with the given arguments. If
             the function does not exists then its an InvalidCode exception'''
             
-            assert func_call.type == NodeType.FUNC_CALL, f"Not Node.FUNC_CALL {func_call}"
+            assert func_call.type == Node.Type.FUNC_CALL, f"Not Node.FUNC_CALL {func_call}"
             
             func_def = Scope.FunctionSignature.findFromFuncCall(func_call, self)
             func_scope = Scope(self, func_def.components['func'])
@@ -919,7 +922,7 @@ def constructProgram (ast: Node) -> Instruction:
         def setVarState (self, identifier: Token, ext: bool, state: Number | Instruction) -> None:
             '''Sets the new state for a variable, and if it doesn't exist add
             it, unless it's an external variable, then it's an InvalidCode exception'''
-            assert identifier.type == TokenType.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
+            assert identifier.type == Token.Type.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
             if ext:
                 scope = self.parent # Since ext, self is skipped
                 while scope is not None:
@@ -963,26 +966,26 @@ def constructProgram (ast: Node) -> Instruction:
                     assert isValueElement(value_element), f"Not a value element {value_element}"
                     
                     if type(value_element) == Token:
-                        if value_element.type in [TokenType.NUMBER, TokenType.IDENTIFIER]:
+                        if value_element.type in [Token.Type.NUMBER, Token.Type.IDENTIFIER]:
                             return
                     
                     elif type(value_element) == Node:
-                        if value_element.type == NodeType.OP:
+                        if value_element.type == Node.Type.OP:
                             checkCalledFuncs(value_element.components['l_value'], scope)
                             checkCalledFuncs(value_element.components['r_value'], scope)
                             return
                         
-                        elif value_element.type == NodeType.ORDER_PAREN:
+                        elif value_element.type == Node.Type.ORDER_PAREN:
                             checkCalledFuncs(value_element.components['value'], scope)
                             return
                         
-                        elif value_element.type == NodeType.FUNC_CALL:
+                        elif value_element.type == Node.Type.FUNC_CALL:
                             Scope.FunctionSignature.checkFuncCall(value_element, scope)
                             for arg in value_element.components['args']:
                                 checkCalledFuncs(arg, scope)
                             return
                         
-                        elif value_element.type == NodeType.ANON_FUNC:
+                        elif value_element.type == Node.Type.ANON_FUNC:
                             validateScopeFuncCalls(value_element.components['body'], scope, value_element.components['starter'])
                             return
                     
@@ -991,23 +994,23 @@ def constructProgram (ast: Node) -> Instruction:
                 scope = Scope(parent_scope, starter)
                 
                 for node in content:
-                    if node.type == NodeType.VAR_ASSIGN:
+                    if node.type == Node.Type.VAR_ASSIGN:
                         checkCalledFuncs(node.components['value'], scope)
                     
-                    elif node.type == NodeType.FUNC_DEF:
+                    elif node.type == Node.Type.FUNC_DEF:
                         scope.addFunc(node)
                     
-                    elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
+                    elif node.type in [Node.Type.FUNC_CALL, Node.Type.ANON_FUNC]:
                         checkCalledFuncs(node, scope)
                     
-                    elif node.type == NodeType.RETURN:
+                    elif node.type == Node.Type.RETURN:
                         if node.components['has_value']:
                             checkCalledFuncs(node.components['value'], scope)
                     
                     else:
                         assert False, f"Something other than instruction node {node}"
             
-            assert func_def.type == NodeType.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
+            assert func_def.type == Node.Type.FUNC_DEF, f"Something other than Node.FUNC_DEF {func_def}"
             
             Scope.FunctionSignature.checkAlreadyDefined(func_def, self)
             validateScopeFuncCalls(func_def.components['body'], self, func_def.components['func'])
@@ -1037,29 +1040,29 @@ def constructProgram (ast: Node) -> Instruction:
             assert isValueElement(value_element), f"Not a value element {value_element}"
             
             if type(value_element) == Token:
-                if value_element.type == TokenType.NUMBER:
+                if value_element.type == Token.Type.NUMBER:
                     return value_element.lexeme
                 
-                elif value_element.type == TokenType.IDENTIFIER:
+                elif value_element.type == Token.Type.IDENTIFIER:
                     return scope.resolveVar(value_element)
                 
             elif type(value_element) == Node:
-                if value_element.type == NodeType.OP:
+                if value_element.type == Node.Type.OP:
                     op = OP_SET.fromSymbol(value_element.components['op'].lexeme)
                     l_value = processValueElement(value_element.components['l_value'], scope)
                     r_value = processValueElement(value_element.components['r_value'], scope)
                     return Instruction(op, l_value, r_value)
                 
-                elif value_element.type == NodeType.ORDER_PAREN:
+                elif value_element.type == Node.Type.ORDER_PAREN:
                     return processValueElement(value_element.components['value'], scope)
                 
-                elif value_element.type == NodeType.FUNC_CALL:
+                elif value_element.type == Node.Type.FUNC_CALL:
                     args = []
                     for arg in value_element.components['args']:
                         args.append(processValueElement(arg, scope))
                     return scope.resolveFuncCall(value_element, args)
                 
-                elif value_element.type == NodeType.ANON_FUNC:
+                elif value_element.type == Node.Type.ANON_FUNC:
                     return evaluateScope(value_element.components['body'], (scope, value_element.components['starter']))
             
             assert False, f"Unreachable"
@@ -1070,17 +1073,17 @@ def constructProgram (ast: Node) -> Instruction:
             scope = Scope(parent_scope, starter)
         
         for node in content:
-            if node.type == NodeType.VAR_ASSIGN:
+            if node.type == Node.Type.VAR_ASSIGN:
                 state = processValueElement(node.components['value'], scope)
                 scope.setVarState(node.components['var'], node.components['ext'], state)
             
-            elif node.type == NodeType.FUNC_DEF:
+            elif node.type == Node.Type.FUNC_DEF:
                 scope.addFunc(node)
             
-            elif node.type in [NodeType.FUNC_CALL, NodeType.ANON_FUNC]:
+            elif node.type in [Node.Type.FUNC_CALL, Node.Type.ANON_FUNC]:
                 processValueElement(node, scope)
             
-            elif node.type == NodeType.RETURN:
+            elif node.type == Node.Type.RETURN:
                 if node.components['has_value']:
                     return processValueElement(node.components['value'], scope)
                 else:
@@ -1091,7 +1094,7 @@ def constructProgram (ast: Node) -> Instruction:
         
         return scope.getReturnVarState()
     
-    assert ast.type == NodeType.ROOT, f"Not Node.ROOT"
+    assert ast.type == Node.Type.ROOT, f"Not Node.ROOT"
     
     return_value = evaluateScope(ast.components['content'], (None, ast.components['boc']))
     
