@@ -10,24 +10,26 @@ from numbers import Number
 class Token ():
     class Type (Enum):
         '''Token types'''
-        NUMBER      = auto() # Any number
-        OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
-        EOL         = auto() # End of a line
-        OPEN_PAREN  = auto() # Opening parenthesis `(`
-        CLOSE_PAREN = auto() # Closing parenthesis `)`
-        IDENTIFIER  = auto() # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
-        ASSIGN_OP   = auto() # The assigning operation, `=`
-        DEF_KW      = auto() # The `def` keyword to declare functions
-        OPEN_CURLY  = auto() # Opening curly brackets `{`
-        CLOSE_CURLY = auto() # Closing curly brackets `}`
-        COMMA       = auto() # The `,` that separates the params and args
-        SEMICOLON   = auto() # `;` to end expressions (not required)
-        BOC         = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
-        EOC         = auto() # End of Content # This one is not used really
-        EXT_KW      = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
-        RET_KW      = auto() # The `ret` keyword to return values
-        UNARY_ALS   = auto() # Unary aliases. They start with $
-        BINARY_ALS  = auto() # Binary aliases. They start with @
+        NUMBER        = auto() # Any number
+        OP            = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
+        EOL           = auto() # End of a line
+        OPEN_PAREN    = auto() # Opening parenthesis `(`
+        CLOSE_PAREN   = auto() # Closing parenthesis `)`
+        IDENTIFIER    = auto() # Any identifier; variable, function name ext.. Can only have letters, `_` and numbers but can only start with the first two; _fOo10
+        ASSIGN_OP     = auto() # The assigning operation, `=`
+        DEF_KW        = auto() # The `def` keyword to declare functions
+        OPEN_CURLY    = auto() # Opening curly brackets `{`
+        CLOSE_CURLY   = auto() # Closing curly brackets `}`
+        COMMA         = auto() # The `,` that separates the params and args
+        SEMICOLON     = auto() # `;` to end expressions (not required)
+        BOC           = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
+        EOC           = auto() # End of Content # This one is not used really
+        EXT_KW        = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
+        RET_KW        = auto() # The `ret` keyword to return values
+        UNARY_ALS     = auto() # Unary aliases. They start with $
+        BINARY_ALS    = auto() # Binary aliases. They start with @
+#        OPEN_BRACKET  = auto() # Opening bracket `[`
+#        CLOSE_BRACKET = auto() # Closing bracket `]`
     
     def __init__(self, tokenType: Token.Type, lexeme: str | Number, line: str, span: int, file_path: str, line_index: int, char_index: int, synthesized: bool=False) -> None:
         '''`line`: the actual line, the string in which this Token exists\n
