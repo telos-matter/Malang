@@ -1,4 +1,5 @@
-# The standard library. Has the basic functions to get you going
+# The standard library.
+# Has the basic functions to get you going, as well as some nessaisary basic math function
 
 FALSE = 0
 TRUE = 1
