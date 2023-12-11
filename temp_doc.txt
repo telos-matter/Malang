@@ -44,3 +44,5 @@ Strings are lists , with ""
 N they are just syntactic sugaring 
 
 I plan on adding for loop, which would also just be syntactic sugaring, but its boundries are evaluated at rundtime
+
+Include now skips already imported
