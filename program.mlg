@@ -1,4 +1,3 @@
-include std
-include std
+include math
 
-ret TRUE @& FALSE
+ret ln(1)

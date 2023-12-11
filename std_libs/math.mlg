@@ -1,6 +1,61 @@
 # Math library, contains log, cos..
 
+# MOST OF THE FUNCTION ARE NOT YET IMPLEMENTED
+
+include std
+include assertion
+
 PI = 3.141592653589793
 NICE = 69
 E = 2.718281828459045
-LN2 = 0.6931471805599453
+LN_2 = 0.6931471805599453
+
+def exp(x) {
+    ret E ^ x
+}
+
+def ln(x) {
+    # TODO impl
+    ret assert(FALSE, 0)
+}
+
+def log(x, n) {
+    ret ln(x)/ln(n)
+}
+
+def sin(x) {
+    # TODO impl
+    ret assert(FALSE, 0)
+}
+
+def cos(x) {
+    # TODO impl
+    ret assert(FALSE, 0)
+}
+
+def tan(x) {
+    ret sin(x)/cos(x)
+}
+
+def asin(x) {
+    # TODO impl
+    ret assert(FALSE, 0)
+}
+
+def acos(x) {
+    # TODO impl
+    ret assert(FALSE, 0)
+}
+
+def atan(x) {
+    # TODO impl
+    ret assert(FALSE, 0)
+}
+
+def degress(rad) {
+    ret rad * 180 / PI
+}
+
+def radians(deg) {
+    ret deg * PI / 180
+}
