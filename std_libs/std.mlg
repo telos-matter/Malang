@@ -1,10 +1,7 @@
 # The standard library. Has the basic functions to get you going
 
-TRUE = 1
 FALSE = 0
-
-PI = 3.141592653589793
-E = 2.718281828459045
+TRUE = 1
 
 def sqrt (x) {
     ret x ^ 0.5

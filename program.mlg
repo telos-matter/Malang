@@ -1,6 +1,3 @@
 include std
-include assertion
 
-foo = 34 + 34
-
-ret assert(foo @== 69, foo)
+ret TRUE @& FALSE

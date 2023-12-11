@@ -124,15 +124,19 @@ def parseSourceFile (file_path: str) -> list[Token]:
         message = "❌ PARSING ERROR: " +message +f"\n{temp_token.pointOut()}\n{temp_token.location()}"
         raise Exception(message)
     
-    def readContent (file_path: str, main_file_path: str) -> str:
+    def readContent (file_path: str, main_file_path: str, include_temp_token: Token | None) -> str:
         '''Tries to locate and read the content
         of a file\n
+        `include_temp_token`: if the file to be read is from an include, give
+        the include token to raise an exception in case it was not found\n
         #### Note:
         If the file is empty it would return an empty str'''
         
-        def safeReadHereAndRelative (file_path: str, main_file_path: str) -> str | None:
-            '''Tries to read the file in the compiler location
-            if it fails tries relative to the `main_file_path`'''
+        def safeReadLibAndRelative (file_path: str, main_file_path: str) -> str | None:
+            '''Tries to read the file from the std_libs
+            dir next to the compiler
+            if it fails tries to read it relative to
+            the `main_file_path`'''
             
             def safeRead (file_path: str) -> str | None:
                 '''Reads content the file if it exists,
@@ -143,30 +147,39 @@ def parseSourceFile (file_path: str) -> list[Token]:
                 except FileNotFoundError:
                     return None
             
-            if file_path == main_file_path:
+            STD_LIBS_DIR = 'std_libs'
+            if file_path == main_file_path: # If you are trying to read the main file, then just read it
                 return safeRead(file_path)
+            original_file_path = file_path # Otherwise locate it
+            file_path = os.path.join(STD_LIBS_DIR, original_file_path)
             content = safeRead(file_path)
             if content is not None:
                 return content
-            dir = os.path.dirname(main_file_path)
-            file_path = os.path.join(dir, file_path)
+            main_file_dir = os.path.dirname(main_file_path)
+            file_path = os.path.join(main_file_dir, original_file_path)
             return safeRead(file_path)
         
         FILE_EXT = '.mlg'
         
-        content = safeReadHereAndRelative(file_path, main_file_path)
+        content = safeReadLibAndRelative(file_path, main_file_path)
         if content is None:
             if not file_path.endswith(FILE_EXT):
-                content = safeReadHereAndRelative(file_path +FILE_EXT, main_file_path)
+                content = safeReadLibAndRelative(file_path +FILE_EXT, main_file_path)
         if content is not None:
             return content
-        raise Exception(f"❌ FILE NOT FOUND: Couldn't locate this file `{file_path}`")
+        if include_temp_token is None:
+            raise Exception(f"❌ FILE NOT FOUND: Couldn't locate this file `{file_path}`")
+        else:
+            raise Exception(f"❌ FILE NOT FOUND: Couldn't locate this file `{file_path}`\n{include_temp_token.pointOut()}\n{include_temp_token.location()}")
     
     NUMBER_PERIOD = '.' # 3.14
     NUMBER_SEP    = '_' # 100_00
     
-    def parse (file_path: str, main: bool, main_file_path: str) -> list[Token]:
+    def parse (content: str, file_path: str, main: bool, main_file_path: str) -> list[Token]:
         '''The functions that actually parses the file\n
+        `content`: content to parse\n
+        `file_path`: the file path of this content. Only used
+        to create tokens\n
         `main`: specifies whether this is the main file being
         parsed to know whether or not to include the BOC and EOC
         tokens\n
@@ -224,7 +237,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
             message = "Unterminated string literal" if starter == '"' else "Unterminated character literal"
             parsingError(message, temp_token)
         
-        content = readContent(file_path, main_file_path).splitlines() # Returns an empty list in case of empty content
+        content = content.splitlines() # Returns an empty list in case of empty content
         tokens = []
         
         if main:
@@ -287,7 +300,10 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         tokenType = Token.Type.RET_KW
                     
                     elif identifier == 'include':
-                        tokens.extend(parse(line[j +1:], False, main_file_path))
+                        included_file = line[j +1:]
+                        temp_token = Token(None, line[i :], line, len(line) -i, file_path, line_index, i)
+                        included_file_content = readContent(included_file, main_file_path, temp_token)
+                        tokens.extend(parse(included_file_content, included_file, False, main_file_path))
                         break
                     
                     else:
@@ -370,7 +386,8 @@ def parseSourceFile (file_path: str) -> list[Token]:
         
         return tokens
     
-    return parse(file_path, True, file_path)
+    content = readContent(file_path, file_path, None)
+    return parse(content, file_path, True, file_path)
 
 
 
