@@ -26,13 +26,11 @@ class Token ():
         COMMA         = auto() # The `,` that separates the params or args
         SEMICOLON     = auto() # `;` to end expressions (not required)
         BOC           = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
-        EOC           = auto() # End of Content # This one is not used really
+        EOC           = auto() # End of Content. This one is not used really
         EXT_KW        = auto() # The `ext` keyword to assign to external variables, the one in the parent scope recursively
         RET_KW        = auto() # The `ret` keyword to return values
         UNARY_ALS     = auto() # Unary aliases. They start with $
         BINARY_ALS    = auto() # Binary aliases. They start with @
-        # OPEN_BRACKET  = auto() # Opening bracket `[`
-        # CLOSE_BRACKET = auto() # Closing bracket `]`
         
         @property
         def lexeme (self) -> str:
@@ -59,10 +57,6 @@ class Token ():
                 return 'ext'
             elif self == Token.Type.RET_KW:
                 return 'ret'
-            # elif self == Token.Type.OPEN_BRACKET:
-            #     return '['
-            # elif self == Token.Type.CLOSE_BRACKET:
-            #     return ']'
             else:
                 assert False, f"Tried getting the lexeme of a Token.Type that isn't fixed"
     
@@ -340,14 +334,6 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokenType = Token.Type.UNARY_ALS if char == '$' else Token.Type.BINARY_ALS
                     tokens.append(Token(tokenType, alias, line, j -i, file_path, line_index, i))
                     i = j
-                
-                # elif char == Token.Type.OPEN_BRACKET.lexeme:
-                #     tokens.append(Token(Token.Type.OPEN_BRACKET, char, line, len(char), file_path, line_index, i))
-                #     i += 1
-                
-                # elif char == Token.Type.CLOSE_BRACKET.lexeme:
-                #     tokens.append(Token(Token.Type.CLOSE_BRACKET, char, line, len(char), file_path, line_index, i))
-                #     i += 1
                 
                 elif char == '"':
                     string, j = readString(line, i, file_path, line_index)
