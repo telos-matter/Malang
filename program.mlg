@@ -1,3 +1,2 @@
-include math
 
-ret ln(1)
+ret "Hello, world!"

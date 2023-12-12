@@ -23,7 +23,7 @@ class Token ():
         DEF_KW        = auto() # The `def` keyword to declare functions
         OPEN_CURLY    = auto() # Opening curly brackets `{`
         CLOSE_CURLY   = auto() # Closing curly brackets `}`
-        COMMA         = auto() # The `,` that separates the params, args or list elements
+        COMMA         = auto() # The `,` that separates the params or args
         SEMICOLON     = auto() # `;` to end expressions (not required)
         BOC           = auto() # Beginning of Content (It's Content and not File because the include keyword basically just copies and pastes the content of the included file in the one including it, and so its not a single file being parsed rather some content)
         EOC           = auto() # End of Content # This one is not used really
@@ -31,8 +31,8 @@ class Token ():
         RET_KW        = auto() # The `ret` keyword to return values
         UNARY_ALS     = auto() # Unary aliases. They start with $
         BINARY_ALS    = auto() # Binary aliases. They start with @
-        OPEN_BRACKET  = auto() # Opening bracket `[`
-        CLOSE_BRACKET = auto() # Closing bracket `]`
+        # OPEN_BRACKET  = auto() # Opening bracket `[`
+        # CLOSE_BRACKET = auto() # Closing bracket `]`
         
         @property
         def lexeme (self) -> str:
@@ -59,10 +59,10 @@ class Token ():
                 return 'ext'
             elif self == Token.Type.RET_KW:
                 return 'ret'
-            elif self == Token.Type.OPEN_BRACKET:
-                return '['
-            elif self == Token.Type.CLOSE_BRACKET:
-                return ']'
+            # elif self == Token.Type.OPEN_BRACKET:
+            #     return '['
+            # elif self == Token.Type.CLOSE_BRACKET:
+            #     return ']'
             else:
                 assert False, f"Tried getting the lexeme of a Token.Type that isn't fixed"
     
@@ -341,28 +341,31 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokens.append(Token(tokenType, alias, line, j -i, file_path, line_index, i))
                     i = j
                 
-                elif char == Token.Type.OPEN_BRACKET.lexeme:
-                    tokens.append(Token(Token.Type.OPEN_BRACKET, char, line, len(char), file_path, line_index, i))
-                    i += 1
+                # elif char == Token.Type.OPEN_BRACKET.lexeme:
+                #     tokens.append(Token(Token.Type.OPEN_BRACKET, char, line, len(char), file_path, line_index, i))
+                #     i += 1
                 
-                elif char == Token.Type.CLOSE_BRACKET.lexeme:
-                    tokens.append(Token(Token.Type.CLOSE_BRACKET, char, line, len(char), file_path, line_index, i))
-                    i += 1
+                # elif char == Token.Type.CLOSE_BRACKET.lexeme:
+                #     tokens.append(Token(Token.Type.CLOSE_BRACKET, char, line, len(char), file_path, line_index, i))
+                #     i += 1
                 
                 elif char == '"':
                     string, j = readString(line, i, file_path, line_index)
-                    tokens.append(Token(Token.Type.OPEN_BRACKET, Token.Type.OPEN_BRACKET.lexeme, line, 1, file_path, line_index, i, True))
-                    for ci, c in enumerate(string):
-                        tokens.append(Token(Token.Type.NUMBER, ord(c), line, 1, file_path, line_index, i +ci +1, True))
-                        tokens.append(Token(Token.Type.COMMA, Token.Type.COMMA.lexeme, line, 1, file_path, line_index, i +ci +1, True))
-                    tokens.append(Token(Token.Type.CLOSE_BRACKET, Token.Type.CLOSE_BRACKET.lexeme, line, 1, file_path, line_index, j -1, True))
+                    if len(string) == 0:
+                        temp_token = Token(None, string, line, j -i, file_path, line_index, i)
+                        parsingError(f"Strings can't be empty", temp_token)
+                    value = 0
+                    for c in string:
+                        value *= 2**8
+                        value += ord(c)
+                    tokens.append(Token(Token.Type.NUMBER, value, line, j -i, file_path, line_index, i))
                     i = j
                 
                 elif char == "'":
                     string, j = readString(line, i, file_path, line_index)
                     if len(string) != 1:
                         temp_token = Token(None, string, line, j -i, file_path, line_index, i)
-                        parsingError(f"Single quotations must contain one single character", temp_token)
+                        parsingError(f"Characters must contain one single character", temp_token)
                     tokens.append(Token(Token.Type.NUMBER, ord(string), line, j -i, file_path, line_index, i))
                     i = j
                 
@@ -1225,53 +1228,55 @@ def compile (args: dict) -> None:
     '''Not only compiles, but rather does what ever is in the args'''
     
     FILE_PATH = args['file_path']
+    VERBOSE = args['verbose']
     DEBUG = args['debug']
     INTERPRET = args['interpret']
     
     tokens = parseSourceFile(FILE_PATH)
-    if DEBUG:
+    if VERBOSE:
         print('✅ Parsed')
+    if DEBUG:
         print("Tokens:\n", tokens)
     
     ast = constructAST(tokens)
-    if DEBUG:
+    if VERBOSE:
         print('✅ Constructed the AST')
+    if DEBUG:
         print("Node.ROOT['content']:\n")
         for node in ast.components['content']:
             print("\t-", node)
     
     program = constructProgram(ast)
-    if DEBUG:
+    if VERBOSE:
         print('✅ Constructed the program')
+    if DEBUG:
         str_program = str(program)[1:-1]
         print("Program:", str_program, sep='\n')
     
+    original_result, time, count = program.runProgram()
     
-    result, time, count = program.runProgram()
+    result = original_result
     if INTERPRET:
         if result in [0, 1]:
             result = bool(result)
         elif result == 69:
             result = 'Nice'
-        elif result > 99:
+        elif result >= 0 and int(result) == result:
             chars = ''
-            iteration = 0
-            buffer = 0
             while result > 0:
-                num = result % 10
-                result //= 10
-                buffer += num * 10**iteration
-                iteration += 1
-                if iteration == 3:
-                    chars += (chr(int(buffer)))
-                    buffer = 0
-                    iteration = 0
-            if iteration != 0:
-                chars += (chr(int(buffer)))
+                num = result % 2**8
+                result //= 2**8
+                chars += chr(num)
             result = chars[:: -1]
     
-    print(result)
-    if DEBUG:
-        print(f"The result of the program is {result}")
-        print(f"It was computed in {time} seconds")
-        print(f"It took {count} instructions to compute the result")
+    if VERBOSE:
+        print('✅ Program ran successfully')
+        if INTERPRET:
+            print(f"👓 The interpreted result is {result}")
+            print(f"📠 The raw result is {original_result}")
+        else:
+            print(f"🧾 The result is {result}")
+        print(f"⏱️  It was computed in {time} seconds")
+        print(f"🏃🏻 It took {count} instruction{['', 's'][0 if count == 1 else 1]} to compute the result")
+    else:
+        print(result)

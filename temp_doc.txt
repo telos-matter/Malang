@@ -46,3 +46,32 @@ N they are just syntactic sugaring
 I plan on adding for loop, which would also just be syntactic sugaring, but its boundries are evaluated at rundtime
 
 Include now skips already imported
+
+
+
+
+
+How strings would be structured:
+Goals:
+Be able to store and show strings, only interested in ascii chars, which are 1 byte long, 8 bits, or 2 hex values (from 0 to 255). Also possibility to concat strings. Transfer numbers into strings and vice versa.
+
+Attempt number 1:
+Store the ascii chars as 3 digits numbers one after the other.
+For example `Hello` would be `72, 101, 108, 108, 111` as one whole number. So `72101108108111`
+Can store; if size not a multiple of 3, pad with 0 on the left
+Can concat strings, simply move to left by 3 and add a char
+Numbers to strings and Strings to number; a linear mapping function 
+
+Works, but I fell like we can do better on terms of storage size if we store them as bytes
+Attempt number 2:
+Wait that's the same thing.
+My idea was to store for example `el`, which would be `101, 108` as it would actually be stored like so: `0110 0101, 0110 1100` and then store what ever number that would represent that. But the number that would represent that is indeed `101108`. No wait that's not true. It's actually `25964` which is less. But wouldn't the benefit always be just 7 bit max?
+
+`Hello` stored as bits would be `310939249775`. Which is stored on 40 bits, where as `72101108108111` is stored on 47 XD. If I can prove that it is indeed 7 bits, or even 1 byte more for any case then there is no need to go with the second one, and lets just go instead with the first attempt because its easier. And offers readability to the user too.
+
+Okay so to store 2 chars, we need 2 bytes, one after the other. And to store 2 chars in the form of numbers, we need 2 numbers, one after the other. These numbers are of maximum 255, so the max 1 number can take is 1 byte, it would seem intuitive to say that 2 would take 2 bytes max. So 255255 shouldn't take more than 2 bytes u say. But what u overlook in that one is that although u just shift the number by 3 (1000), u are shifting it in base 10, which overshoots the 4 bits shifting (just 2**8 = 256). And 255000 alone is stored on 18 bits. Also why its works with 2 bytes and you can just shift, is because the value of the byte it self does not change because its already in base 2. 
+
+So, in conclusion: we store each chars with their number representation, but we don't shift with 1000, but rather with 256. Done.
+One last thing tho. The padding? No need, keep dividing by 256 until zero
+
+

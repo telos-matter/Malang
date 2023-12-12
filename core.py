@@ -84,7 +84,7 @@ class Instruction ():
         import time
         
         start = time.time()
-        result, counter = self.evaluate() # The instructions are close together so that it misses no milliseconds                                                                                                                                                                                               # A joke obviously
+        result, counter = self.evaluate() # These instructions are close together so that it misses no milliseconds                                                                                                                                                                                               # A joke obviously
         end = time.time()
         duration = end - start
         
