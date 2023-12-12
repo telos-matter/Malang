@@ -1228,7 +1228,7 @@ def compile (args: dict) -> None:
     if VERBOSE:
         print('✅ Constructed the AST')
     if DEBUG:
-        print("Node.ROOT['content']:\n")
+        print("Node.ROOT['content']:")
         for node in ast.components['content']:
             print("\t-", node)
     
@@ -1258,8 +1258,8 @@ def compile (args: dict) -> None:
     if VERBOSE:
         print('✅ Program ran successfully')
         if INTERPRET:
-            print(f"👓 The interpreted result is {result}")
-            print(f"📠 The raw result is {original_result}")
+            print(f"📠 The interpreted result is {result}")
+            print(f"🤖 The raw result is {original_result}")
         else:
             print(f"🧾 The result is {result}")
         print(f"⏱️  It was computed in {time} seconds")
