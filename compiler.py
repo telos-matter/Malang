@@ -720,7 +720,7 @@ def constructAST (tokens: list[Token]) -> Node:
         
         i += 1
         if len(tokens) <= i or tokens[i].type != Token.Type.IDENTIFIER:
-            syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{tokens[i -1]}` keyword", {tokens[i -1]})
+            syntaxError(f"There should be an identifier representing the name of the function being defined right after the `{tokens[i -1]}` keyword", tokens[i -1])
         func = tokens[i]
         i += 1
         if len(tokens) <= i or tokens[i].type != Token.Type.OPEN_PAREN:
