@@ -1,2 +1,12 @@
 
-ret "Hello, world!"
+
+def factorial (n) {
+    res = 1
+    for i: 2: n {
+        res = res * i
+    }
+    
+    ret res
+}
+
+ret factorial(5)

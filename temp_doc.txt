@@ -73,5 +73,14 @@ Okay so to store 2 chars, we need 2 bytes, one after the other. And to store 2 c
 
 So, in conclusion: we store each chars with their number representation, but we don't shift with 1000, but rather with 256. Done.
 One last thing tho. The padding? No need, keep dividing by 256 until zero
+Also, there is no difference between empty string and string containing \0
+
+
+For loops are just syntactic sugaring and they just get expanded at compilation. 
+Syntax is as follows:
+for var:begin:end:step
+{}
+Or for var:begin:end {} 
+Step is optional
 
 
