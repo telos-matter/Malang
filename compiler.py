@@ -31,6 +31,8 @@ class Token ():
         RET_KW        = auto() # The `ret` keyword to return values
         UNARY_ALS     = auto() # Unary aliases. They start with $
         BINARY_ALS    = auto() # Binary aliases. They start with @
+        FOR_KW        = auto() # The `for` keyword for for loops
+        COLON         = auto() # `:` to separate the parameters of the for loop
         
         @property
         def lexeme (self) -> str:
@@ -57,6 +59,10 @@ class Token ():
                 return 'ext'
             elif self == Token.Type.RET_KW:
                 return 'ret'
+            elif self == Token.Type.FOR_KW:
+                return 'for'
+            elif self == Token.Type.COLON:
+                return ':'
             else:
                 assert False, f"Tried getting the lexeme of a Token.Type that isn't fixed"
     
@@ -287,6 +293,9 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     elif identifier == Token.Type.RET_KW.lexeme:
                         tokenType = Token.Type.RET_KW
                     
+                    elif identifier == Token.Type.FOR_KW.lexeme:
+                        tokenType = Token.Type.FOR_KW
+                    
                     elif identifier == 'include':
                         included_file_path = line[j +1:]
                         result = resolveFile(included_file_path, main_file_path)
@@ -355,6 +364,10 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokens.append(Token(Token.Type.NUMBER, ord(string), line, j -i, file_path, line_index, i))
                     i = j
                 
+                elif char == Token.Type.COLON.lexeme:
+                    tokens.append(Token(Token.Type.COLON, char, line, len(char), file_path, line_index, i))
+                    i += 1
+                
                 elif char == '#':
                     # A line comment, go to the next line
                     break
@@ -364,7 +377,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                 
                 else:
                     temp_token = Token(None, char, line, len(char), file_path, line_index, i)
-                    parsingError(f"Unexpected char: `{char}`", temp_token)
+                    parsingError(f"Unexpected / unacceptable char: `{char}`", temp_token)
             
             tokens.append(Token(Token.Type.EOL, Token.Type.EOL.lexeme, line, 1, file_path, line_index, len(line)))
         
