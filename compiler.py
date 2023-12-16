@@ -406,6 +406,7 @@ class Node():
         FUNC_CALL   = auto() # Function call
         ANON_FUNC   = auto() # Anonymous function
         RETURN      = auto() # Return to return from scopes, either a value in front of it or the return variable
+        FOR_LOOP    = auto() # A deterministic for loop. Gets unwrapped at compilation
     
     def __init__(self, nodeType: Node.Type, **components) -> None:
         ''' The components that each nodeType has:\n
@@ -443,7 +444,7 @@ class Node():
             only if `with_als` is `True`
             - `args`: a list of value elements representing the arguments
         - `ANON_FUNC`:
-            - `starter`: an open curly bracket representing the start of the anonymous function
+            - `starter`: a Token.OPEN_CURLY representing the start of the anonymous function
             - `body`: a list of nodes (another AST, but without the root node) 
             representing the body of the anonymous function. It
             can contain any other node, including another Node.ANON_FUNC
@@ -452,6 +453,19 @@ class Node():
             it should return or if it should return the return variable
             - `value`: a value element that would be returned, if and only if `has_value`
             is `True`
+        - `FOR_LOOP`:
+            - `var`: a Token.IDENTIFIER representing the variable is going
+            to take the iteration values. Like `i` for example
+            - `begin`: a value element representing from where the loop
+            should start
+            - `end`: a value element representing up to where the loop
+            should end
+            - `step`: a value element representing the step by which
+            to increment the variable. If it is negative, the iteration
+            would start from end
+            - `starter`: a Token.OPEN_CURLY representing the start of
+            the for loop body
+            - `body`: the body of the for loop that is going to get duplicated
         '''
         self.type = nodeType
         self.components = components
@@ -465,7 +479,7 @@ class Node():
         Instruction nodes are the only Nodes that can start new instructions'''
         if self.type == Node.Type.FUNC_CALL:
             return self.components['with_als'] == False
-        return self.type in [Node.Type.VAR_ASSIGN, Node.Type.FUNC_DEF, Node.Type.ANON_FUNC, Node.Type.RETURN]
+        return self.type in [Node.Type.VAR_ASSIGN, Node.Type.FUNC_DEF, Node.Type.ANON_FUNC, Node.Type.RETURN, Node.Type.FOR_LOOP]
     
     def __repr__(self) -> str:
         return f"{self.type}\n\t=> {self.components}"
@@ -538,18 +552,20 @@ def constructAST (tokens: list[Token]) -> Node:
         else:
             return None
     
-    def processValueExpression (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool, accepts_semicolons: bool, accepts_comas: bool) -> tuple[Node | Token, int]:
+    def processValueExpression (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool, accepts_semicolons: bool, accepts_comas: bool, accepts_colons: bool) -> tuple[Node | Token, int]:
         '''Processes a value expression and return a value element
         representing it as well as from where to continue\n
         Whether a value expression can have certain
         terminators vary, so
-        the parameters specify how to handle it\n
+        the parameters specify whether it can have it or not\n
         `tokens`: normally, the list of all the tokens\n
         `parent_token`: the token that "wants" this value expression. To raise a SyntaxError with in case of an error\n
         `start_index`: from where to start processing\n
         `skip_eols`: skip EOLs or terminate when encountered\n
         `accepts_semicolons`: can a semicolon be in this value expression?\n
-        `accepts_comas`: can a coma be in this value expression?\n'''
+        `accepts_comas`: can a coma be in this value expression?\n
+        `accepts_colons`: can a colon be in this values expression?\n
+        '''
         
         def nextSingletonValue (tokens: list[Token], parent_token: Token, start_index: int, skip_eols: bool) -> tuple[Node | Token, int]:
             '''Returns the immediate next singleton
@@ -596,7 +612,7 @@ def constructAST (tokens: list[Token]) -> Node:
                 
                 elif tokenType == Token.Type.OPEN_PAREN: # Node.ORDER_PAREN
                     close_paren = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, i +1, token)
-                    value, _ = processValueExpression(tokens[i +1 : close_paren], token, 0, True, False, False)
+                    value, _ = processValueExpression(tokens[i +1 : close_paren], token, 0, True, False, False, False)
                     singleton_value_element = Node(Node.Type.ORDER_PAREN, value=value)
                     i = close_paren +1
                 
@@ -677,6 +693,12 @@ def constructAST (tokens: list[Token]) -> Node:
                 else:
                     syntaxError(f"Semicolons can't be here", token)
             
+            elif tokenType == Token.Type.COLON:
+                if accepts_colons:
+                    break
+                else:
+                    syntaxError(f"Colons can't be here", token)
+            
             else:
                 syntaxError(f"What is this `{token}` doing here? (- In Hector Salamancas' voice). Expected an operation or a binary alias", token)
             
@@ -701,7 +723,7 @@ def constructAST (tokens: list[Token]) -> Node:
             args_tokens = tokens[i : close_paren] # Contains the `(`
             inc = 0
             while i +inc < close_paren:
-                arg, inc = processValueExpression(args_tokens, args_tokens[inc], inc +1, True, False, True)
+                arg, inc = processValueExpression(args_tokens, args_tokens[inc], inc +1, True, False, True, False)
                 if i +inc < close_paren:
                     assert tokens[i +inc].type == Token.Type.COMMA, f"It should only exit if it encountered a comma. Exited on {tokens[i +inc]}"
                 args.append(arg)
@@ -782,6 +804,62 @@ def constructAST (tokens: list[Token]) -> Node:
             func_def = Node(Node.Type.FUNC_DEF, func=func, has_als=True, als=als, params=params, body=body)
         return (func_def, close_curly +1)
     
+    def processForLoop (tokens: list[Token], for_kw_index: int) -> tuple[Node, int]:
+        '''Processes a for loop and returns a Node.FOR_LOOP
+        and the index at which to continue, which is where the for loop
+        body ends +1\n
+        `tokens`: normally, a list of all the tokens\n
+        `for_kw_index`: the Token.FOR_KW index by which you
+        knew this is a for loop'''
+        i = for_kw_index # Just for ease of reference
+        assert tokens[i].type == Token.Type.FOR_KW, f"Not Token.FOR_KW"
+        
+        i += 1
+        open_paren_index = isNextToken(tokens, Token.Type.OPEN_PAREN, i, (f'Expected an open parenthesis `(` after the `for` keyword to define the loop "parameters"', tokens[i -1]))
+        close_paren_index = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, open_paren_index +1, tokens[open_paren_index])
+        parameters = tokens[open_paren_index +1 : close_paren_index] # Take a sub list to make sure the value elements are never over the () of the loop. Although I think it wouldn't go over even if I work with the full list of tokens. But yie
+        # Get the var
+        i = isNextToken(parameters, Token.Type.IDENTIFIER, 0, (f'Expected the loop variable of this for loop to be the first thing after opening the parenthesis', tokens[open_paren_index]))
+        var = parameters[i]
+        i += 1
+        # Get the begin and end values
+        begin, end = None, None
+        for iteration in range(2): # Do the same thing twice, once for begin and once for end
+            # Look for the colon
+            message = f"Expected a colon `:` after the loop variable to separate the later and the begin index of the loop" if iteration == 0 else f"Expected a colon `:` after the begin index of the loop to separate it from the end index"
+            i = isNextToken(parameters, Token.Type.COLON, i, (message, parameters[i -1]))
+            i += 1
+            # Get the value
+            value, i = processValueExpression(parameters, parameters[i -1], i, True, False, False, True)
+            # Assign it to the appropriate one
+            if iteration == 0:
+                begin = value
+            elif iteration == 1:
+                end = value
+            else:
+                assert False, f"Unreachable, loops only twice"
+        assert begin is not None and end is not None, f"Unreachable, if it didn't find them it would've exited"
+        # Check if a step is defined, otherwise give default value
+        step = None
+        step_colon_index = isNextToken(parameters, Token.Type.COLON, i, None)
+        if step_colon_index is None:
+            step = Token(Token.Type.NUMBER, 1, *tokens[open_paren_index].getSynthesizedInfo())
+        else:
+            step, i = processValueExpression(parameters, parameters[step_colon_index], step_colon_index +1, True, False, False, False)
+        # Nothing should be left in the parameters, or just a bunch of EOLs
+        parameters = parameters[i :] # i here would normally point to after the end of the list, or to a Token.EOL
+        if len(parameters) != 0 and not all([token.type == Token.Type.EOL for token in parameters]):
+            syntaxError(f"This `{parameters[0]}` shouldn't be here", parameters[0])
+        assert step is not None, f"Unreachable, assigned either default or found one"
+        i = close_paren_index +1
+        
+        # Get the body
+        open_curly_index = isNextToken(tokens, Token.Type.OPEN_CURLY, i, ('Expected an open curly bracket `{` after this for loop "parameters" to start defining the loop\'s body', tokens[i -1]))
+        close_curly_index = findEnclosingToken(tokens, Token.Type.OPEN_CURLY, Token.Type.CLOSE_CURLY, open_curly_index +1, tokens[open_curly_index])
+        body = construct(tokens[open_curly_index +1 : close_curly_index], False)
+        
+        return (Node(Node.Type.FOR_LOOP, var=var, begin=begin, end=end, step=step, starter=tokens[open_curly_index], body=body), close_curly_index +1)
+    
     def construct (tokens: list[Token], root: bool) -> Node | list[Node]:
         '''The actual function that constructs
         the AST\n
@@ -810,7 +888,7 @@ def constructAST (tokens: list[Token]) -> Node:
                 i += 1
                 if len(tokens) <= i or tokens[i].type != Token.Type.ASSIGN_OP:
                     syntaxError(f"Expected an `=` after this variable `{token}` to assign a value to it", tokens[i -1])
-                value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
+                value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False, False)
                 content.append(Node(Node.Type.VAR_ASSIGN, var=identifier, ext=True, value=value))
                 
             elif tokenType == Token.Type.IDENTIFIER: # LOCAL Node.VAR_ASSIGN or Node.FUNC_CALL
@@ -818,7 +896,7 @@ def constructAST (tokens: list[Token]) -> Node:
                     syntaxError(f"Expected something after this identifier", token)
                 i += 1
                 if tokens[i].type == Token.Type.ASSIGN_OP: # Node.VAR_ASSIGN
-                    value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False)
+                    value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False, False)
                     content.append(Node(Node.Type.VAR_ASSIGN, var=token, ext=False, value=value))
                 
                 elif tokens[i].type == Token.Type.OPEN_PAREN: # Node.FUNC_CALL
@@ -846,8 +924,12 @@ def constructAST (tokens: list[Token]) -> Node:
                 if len(tokens) <= i or tokens[i].type in [Token.Type.EOL, Token.Type.SEMICOLON]: # Node.RETURN['has_value'] == False
                     content.append(Node(Node.Type.RETURN, has_value=False))
                 else: # Node.RETURN['has_value'] == True
-                    value, i = processValueExpression(tokens, token, i, False, True, False)
+                    value, i = processValueExpression(tokens, token, i, False, True, False, False)
                     content.append(Node(Node.Type.RETURN, has_value=True, value=value))
+            
+            elif tokenType == Token.Type.FOR_KW: # Node.FOR_LOOP
+                for_loop, i = processForLoop(tokens, i)
+                content.append(for_loop)
             
             elif tokenType in [Token.Type.EOL, Token.Type.SEMICOLON]: # Skip
                 i += 1
