@@ -60,14 +60,14 @@ class Instruction ():
         self.b = b
     
     def evaluate(self) -> tuple[Number, int]:
-        '''Evaluates self'''
+        '''Evaluates self and returns how many instructions it executed'''
         counter = 1
         if type(self.a) == Instruction:
-            self.a, _ = self.a.evaluate()
-            counter += _
+            self.a, count = self.a.evaluate()
+            counter += count
         if type(self.b) == Instruction:
-            self.b, _ = self.b.evaluate()
-            counter += _
+            self.b, count = self.b.evaluate()
+            counter += count
         
         return (self.op.function(self.a, self.b), counter)
     
