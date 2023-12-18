@@ -59,6 +59,17 @@ class Instruction ():
         self.a = a
         self.b = b
     
+    def justEvaluate(self) -> Number:
+        '''Unlike `evaluate(self)`, this function
+        just evaluates this instruction'''
+        if type(self.a) == Instruction:
+            self.a = self.a.evaluate()
+        
+        if type(self.b) == Instruction:
+            self.b = self.b.evaluate()
+        
+        return self.op.function(self.a, self.b)
+    
     def evaluate(self) -> tuple[Number, int]:
         '''Evaluates self and returns how many instructions it executed'''
         counter = 1
