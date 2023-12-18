@@ -406,7 +406,7 @@ class Node():
         FUNC_CALL   = auto() # Function call
         ANON_FUNC   = auto() # Anonymous function
         RETURN      = auto() # Return to return from scopes, either a value in front of it or the return variable
-        FOR_LOOP    = auto() # A deterministic for loop. Gets unwrapped at compilation
+        FOR_LOOP    = auto() # A deterministic for loop. Gets unwrapped at compilation / runtime
     
     def __init__(self, nodeType: Node.Type, **components) -> None:
         ''' The components that each nodeType has:\n
@@ -454,6 +454,7 @@ class Node():
             - `value`: a value element that would be returned, if and only if `has_value`
             is `True`
         - `FOR_LOOP`:
+            - `for_kw`: the `for` keyword of this for loop. Used to raise errors
             - `var`: a Token.IDENTIFIER representing the variable is going
             to take the iteration values. Like `i` for example
             - `begin`: a value element representing from where the loop
@@ -464,8 +465,9 @@ class Node():
             to increment the variable. If it is negative, the iteration
             would start from end
             - `starter`: a Token.OPEN_CURLY representing the start of
-            the for loop body
-            - `body`: the body of the for loop that is going to get duplicated
+            the for loop body. Used to synthesize tokens
+            - `body`: a list of instruction nodes representing
+            the body of the for loop that is going to get duplicated
         '''
         self.type = nodeType
         self.components = components
@@ -858,7 +860,7 @@ def constructAST (tokens: list[Token]) -> Node:
         close_curly_index = findEnclosingToken(tokens, Token.Type.OPEN_CURLY, Token.Type.CLOSE_CURLY, open_curly_index +1, tokens[open_curly_index])
         body = construct(tokens[open_curly_index +1 : close_curly_index], False)
         
-        return (Node(Node.Type.FOR_LOOP, var=var, begin=begin, end=end, step=step, starter=tokens[open_curly_index], body=body), close_curly_index +1)
+        return (Node(Node.Type.FOR_LOOP, for_kw=tokens[for_kw_index], var=var, begin=begin, end=end, step=step, starter=tokens[open_curly_index], body=body), close_curly_index +1)
     
     def construct (tokens: list[Token], root: bool) -> Node | list[Node]:
         '''The actual function that constructs
