@@ -1,5 +1,4 @@
 
-
 def factorial (n) {
     res = 1
     for (i: 2: n) {

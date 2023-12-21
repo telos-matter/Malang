@@ -1160,7 +1160,8 @@ def constructProgram (ast: Node) -> Instruction:
             
             def validateScopeFuncCalls (content: list[Node], parent_scope: Scope, starter: Token) -> None:
                 '''Creates a new, temporary, scope for this content and validates
-                its function calls'''
+                its function calls\n
+                Works on a copy of the content'''
                 
                 def checkCalledFuncs (value_element: Node | Token, scope: Scope) -> None:
                     '''Checks if all the functions called
@@ -1244,81 +1245,6 @@ def constructProgram (ast: Node) -> Instruction:
             except KeyError:
                 assert False, f"Unreachable" # The return var is assigned to this scope at __init__
     
-    def unwrapForLoop(content: list[Node], where: int, scope: Scope) -> None:
-        '''Unwraps the for loop located at `where` after evaluating its
-        bounds'''
-        
-        # def synthesizeVarAssign(synthesizer: Token, var: Token, value: Number) -> Node:
-        #     '''Synthesizes a none external Node.VAR_ASSIGN
-        #     for the for loop var assign. Using
-        #     the var and value, that is `var = value`\n
-        #     `synthesizer`: the token to synthesize the
-        #     Token.NUMBER value with'''
-        #     assert type(synthesizer) == Token, f"Not a Token {synthesizer}"
-        #     assert type(var) == Token and var.type == Token.Type.IDENTIFIER, f"Not a Token.IDENTIFIER {var}"
-        #     assert isinstance(value, Number), f"Not a number {value}"
-            
-        #     value = Token(Token.Type.NUMBER, value, *synthesizer.getSynthesizedInfo())
-        #     return Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=value)
-        
-        def insertIteration(for_loop: Node, content: list[Node], where: int, iteration: int, var_value: Number) -> None:
-            '''Insert the body of the `for_loop` in the
-            appropriate position for the given iteration (computes it
-            from the iteration and length of the body)\n
-            `where`: the original `for_loop` position\n
-            `var_value`: the value to assign to the loop's var
-            in this iteration'''
-            assert for_loop.type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP {for_loop}"
-            assert isinstance(var_value, Number), f"Not a Number {var_value}"
-            
-            var = for_loop.components['var']
-            starter = for_loop.components['starter']
-            body = for_loop.components['body']
-            
-            var_value = Token(Token.Type.NUMBER, var_value, *starter.getSynthesizedInfo())
-            var_assign = Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=var_value)
-            
-            stride = len(body) +1 # +1 for the Node.VAR_ASSIGN
-            # Insert the var assign
-            offset = where + stride*iteration
-            content.insert(offset, var_assign)
-            # Insert the body
-            offset += 1
-            content[offset:offset] = body
-        
-        assert content[where].type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP"
-        
-        for_loop = content.pop(where) # We remove it in all cases
-        
-        # Get the loop's parameters
-        parameters = [
-            for_loop.components['begin'],
-            for_loop.components['end'],
-            for_loop.components['step'],
-        ]
-        for i, parameter in enumerate(parameters):
-            parameter = processValueElement(parameter, scope) # In case this whole unwrap function was called when validating before adding a function it would still work (no recursion) because the function that is getting validated is still not added to the scope
-            if type(parameter) == Instruction:
-                parameter = parameter.justEvaluate()
-            parameters[i] = parameter
-        begin, end, step = parameters
-        
-        if step == 0:
-            invalidCode(f"For loops can't have a zero step (infinite loop). This for loop step was evaluated and it was zero", for_loop.components['for_kw'])
-        
-        # Now we iterate
-        iteration = 0
-        if step > 0:
-            while begin <= end:
-                insertIteration(for_loop, content, where, iteration, begin)
-                begin += step
-                iteration += 1
-        else:
-            while end >= begin:
-                insertIteration(for_loop, content, where, iteration, end)
-                end += step
-                iteration += 1
-    
     def processValueElement (value_element: Node | Token, scope: Scope) -> Number | Instruction:
             '''Processes a value element and returns an instruction
             or a number representing it'''
@@ -1353,6 +1279,8 @@ def constructProgram (ast: Node) -> Instruction:
             
             assert False, f"Unreachable"
     
+    
+    
     def evaluateScope (content: list[Node], scope: Scope | tuple[Token , Scope | None]) -> Number | Instruction:
         '''Evaluates a scope and returns 
         the return variable value, either a Number
@@ -1362,6 +1290,68 @@ def constructProgram (ast: Node) -> Instruction:
         If a tuple is given it should contain:\n
             - `parent_scope`: the parent scope or `None` in case of the main scope\n
             - `starter`: a token that started this scope. To synthesize the return variable\n'''
+        
+        def unwrapForLoop(content: list[Node], where: int, scope: Scope) -> None:
+            '''Unwraps the for loop located at `where` after evaluating its
+            bounds'''
+            
+            def insertIteration(for_loop: Node, content: list[Node], where: int, iteration: int, var_value: Number) -> None:
+                '''Insert the body of the `for_loop` in the
+                appropriate position for the given iteration (computes it
+                from the iteration and length of the body)\n
+                `where`: the original `for_loop` position\n
+                `var_value`: the value to assign to the loop's var
+                in this iteration'''
+                assert for_loop.type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP {for_loop}"
+                assert isinstance(var_value, Number), f"Not a Number {var_value}"
+                
+                var = for_loop.components['var']
+                starter = for_loop.components['starter']
+                body = for_loop.components['body']
+                
+                var_value = Token(Token.Type.NUMBER, var_value, *starter.getSynthesizedInfo())
+                var_assign = Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=var_value)
+                
+                stride = len(body) +1 # +1 for the Node.VAR_ASSIGN
+                # Insert the var assign
+                offset = where + stride*iteration
+                content.insert(offset, var_assign)
+                # Insert the body
+                offset += 1
+                content[offset:offset] = body
+            
+            assert content[where].type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP"
+            
+            for_loop = content.pop(where) # We remove it in all cases
+            
+            # Get the loop's parameters
+            parameters = [
+                for_loop.components['begin'],
+                for_loop.components['end'],
+                for_loop.components['step'],
+            ]
+            for i, parameter in enumerate(parameters):
+                parameter = processValueElement(parameter, scope) # In case this whole unwrap function was called when validating before adding a function it would still work (no recursion) because the function that is getting validated is still not added to the scope
+                if type(parameter) == Instruction:
+                    parameter = parameter.justEvaluate()
+                parameters[i] = parameter
+            begin, end, step = parameters
+            
+            if step == 0:
+                invalidCode(f"For loops can't have a zero step (infinite loop). This for loop step was evaluated and it was zero", for_loop.components['for_kw'])
+            
+            # Now we iterate and insert the body
+            iteration = 0
+            if step > 0:
+                while begin <= end:
+                    insertIteration(for_loop, content, where, iteration, begin)
+                    begin += step
+                    iteration += 1
+            else:
+                while end >= begin:
+                    insertIteration(for_loop, content, where, iteration, end)
+                    end += step
+                    iteration += 1
         
         if type(scope) == tuple:
             parent_scope, starter = scope
