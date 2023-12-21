@@ -63,10 +63,10 @@ class Instruction ():
         '''Unlike `evaluate(self)`, this function
         just evaluates this instruction'''
         if type(self.a) == Instruction:
-            self.a = self.a.evaluate()
+            self.a = self.a.justEvaluate()
         
         if type(self.b) == Instruction:
-            self.b = self.b.evaluate()
+            self.b = self.b.justEvaluate()
         
         return self.op.function(self.a, self.b)
     
