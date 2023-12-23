@@ -1279,8 +1279,6 @@ def constructProgram (ast: Node) -> Instruction:
             
             assert False, f"Unreachable"
     
-    
-    
     def evaluateScope (content: list[Node], scope: Scope | tuple[Token , Scope | None]) -> Number | Instruction:
         '''Evaluates a scope and returns 
         the return variable value, either a Number
@@ -1331,7 +1329,7 @@ def constructProgram (ast: Node) -> Instruction:
                 for_loop.components['step'],
             ]
             for i, parameter in enumerate(parameters):
-                parameter = processValueElement(parameter, scope) # In case this whole unwrap function was called when validating before adding a function it would still work (no recursion) because the function that is getting validated is still not added to the scope
+                parameter = processValueElement(parameter, scope)
                 if type(parameter) == Instruction:
                     parameter = parameter.justEvaluate()
                 parameters[i] = parameter
@@ -1358,6 +1356,7 @@ def constructProgram (ast: Node) -> Instruction:
             assert starter != None, f"No starter was given"
             scope = Scope(parent_scope, starter)
         
+        content = content.copy() # Make a copy in which the for loop is going to get unwrapped for this scope
         i = 0
         while i < len(content):
             node = content[i]
