@@ -1,12 +1,10 @@
+include std
 
-def factorial (n) {
-    res = 1
-    for (i: 2: n) {
-        res = res * i
-    }
-    
-    ret res
+def opt(var) {
+    for (var:var:var) {}
 }
 
-
-ret factorial(5)
+for (i:2:10) {
+    res = max(i, res)
+    opt(res) 
+}
