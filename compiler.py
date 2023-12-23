@@ -1402,17 +1402,24 @@ def constructProgram (ast: Node) -> Instruction:
 def compile (args: dict) -> None:
     '''Not only compiles, but rather does what ever is in the args'''
     
+    import time
+    start = time.time()
+    
     FILE_PATH = args['file_path']
     VERBOSE = args['verbose']
     DEBUG = args['debug']
     INTERPRET = args['interpret']
     
+    if VERBOSE:
+        print('👨🏻‍🍳 Parsing..')
     tokens = parseSourceFile(FILE_PATH)
     if VERBOSE:
         print('✅ Parsed')
     if DEBUG:
         print("Tokens:\n", tokens)
     
+    if VERBOSE:
+        print('👨🏻‍🍳 Constructing the AST..')
     ast = constructAST(tokens)
     if VERBOSE:
         print('✅ Constructed the AST')
@@ -1421,6 +1428,8 @@ def compile (args: dict) -> None:
         for node in ast.components['content']:
             print("\t-", node)
     
+    if VERBOSE:
+        print('👨🏻‍🍳 Constructing the program..')
     program = constructProgram(ast)
     if VERBOSE:
         print('✅ Constructed the program')
@@ -1428,7 +1437,9 @@ def compile (args: dict) -> None:
         str_program = str(program)[1:-1]
         print("Program:", str_program, sep='\n')
     
-    original_result, time, count = program.runProgram()
+    if VERBOSE:
+        print('👨🏻‍🍳 Running the program..')
+    original_result, program_time, count = program.runProgram()
     
     result = original_result
     if INTERPRET:
@@ -1444,6 +1455,9 @@ def compile (args: dict) -> None:
                 chars += chr(num)
             result = chars[:: -1]
     
+    end = time.time()
+    compiler_time = end - start
+    
     if VERBOSE:
         print('✅ Program ran successfully')
         if INTERPRET:
@@ -1451,7 +1465,8 @@ def compile (args: dict) -> None:
             print(f"🤖 The raw result is {original_result}")
         else:
             print(f"🧾 The result is {result}")
-        print(f"⏱️  It was computed in {time} seconds")
+        print(f"⏱️  It was computed in {program_time} seconds")
         print(f"🏃🏻 It took {count} instruction{['', 's'][0 if count == 1 else 1]} to compute the result")
+        print(f"⏳ This whole process took {compiler_time} seconds")
     else:
         print(result)
