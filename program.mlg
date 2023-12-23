@@ -1,10 +1,13 @@
 include std
 
-def opt(var) {
-    for (var:var:var) {}
+# True if else
+
+condition = TRUE
+
+for (_: $! condition: 0) {
+    # Do what's here if true
 }
 
-for (i:2:10) {
-    res = max(i, res)
-    opt(res) 
+for (_: condition: 0) {
+    # Else do what's here if false 
 }
