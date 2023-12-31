@@ -1,0 +1,112 @@
+# String library
+
+
+# API note:
+#   Strings can be of any length, however, the
+#   function len will return -1 for any
+#   string longer than MAX_LEN
+#   (a value defined in the function). Subsequently any function
+#   that uses the function len won't work with
+#   strings longer than MAX_LEN.
+#   It is mentioned, whenever that is the case.
+#   Feel free to change the value of MAX_LEN,
+#   the value chosen is arbitrary, but the
+#   bigger the slower
+#
+#   Also strings' index is 1-based. Why? Because I wanted to. What are you going to do about it, cry to ur mom? (But seriously tho, because it is easier. Also reinforces the fact that loops are inclusive, and also there is no lists so it's actually better that way I'd say)
+
+# API implementation:
+#   Some of the function that are defined in the standard library are redefined
+#   here (but only inside function, so they are invisibile outside)
+#   in order for the functions to work (because of float limitations in
+#   the abs function I guess? Not 100% sure). And namely they
+#   are redefined to take into consideration that
+#   they will be working with positivie numbers only. PO: Positive Numbers
+
+
+def len(str) {
+
+    def PONull (x) {
+        def POMod (a, b) {
+            ret a - ((a // b) * b)
+        }
+        
+        def POFloor (x) {
+            ret x - POMod(x, 1)
+        }
+        
+        def function (x) {
+            ret x / (x +10)
+        }
+        
+        ret POFloor(1 -function(x))
+    }
+
+    $!
+    def not (bool) {
+        ret (bool - 1) / -1
+    }
+
+    @==
+    def POEqualNumber (a, b) {
+        ret PONull(a - b)
+    }
+
+    @!=
+    def PODiffNumber (a, b) {
+        ret $! PONull(a - b)
+    }
+
+    # The len function
+    for (i: 1: 1000) { # for (i: 1: MAX_LEN). Calls to this function won't give results larger than that. Don't make it a variable so that the loops get expanded at compile time once
+        str = str // 256 # 2^8
+        
+        for (_: str @!= 0: 0) { # Real if statement. If you feel that that's cheating, the commented code version below works too
+            ret i
+        }
+    }
+    ret -1
+
+    #len = 0
+    #for (i: 1: 100) {
+    #    str = str // 2^8
+    #    len = if (str @== 0, len, i)
+    #}
+    #ret len +1
+}
+
+# API limitation: str can't be longer than MAX_LEN
+def charAt (str, i) {
+    @%
+    def POMod (a, b) { # Remove this function and include the std library if you want to see why I redefined them
+        ret a - ((a // b) * b)
+    }
+
+    for (_: 1: len(str) -i) {
+        str = str // 256
+        for (_: str:str) {}
+    }
+    ret str @% 256
+}
+
+# TODO add substring
+
+# TODO add index
+
+# TODO add @in (contains)
+
+# TODO add atoi
+
+# TODO add itoa
+
+# API limitation: str_2 can't be longer than MAX_LEN
+def append (str_1, str_2) {
+    ret (str_1 * 2^(8 * len(str_2))) + str_2
+}
+
+# API limitation: the str you print every time can't be longer than MAX_LEN
+txt = 0
+def print (str) {
+    # Keeps appending to the txt var, so the var txt shouldn't be used for anything else. At the end of your program return the var txt
+    ext txt = append(txt, str)
+}

@@ -1,13 +1,6 @@
-include std
+include str
 
-# True if else
+print("Hello,")
+print(" world!")
 
-condition = TRUE
-
-for (_: $! condition: 0) {
-    # Do what's here if true
-}
-
-for (_: condition: 0) {
-    # Else do what's here if false 
-}
+ret txt
