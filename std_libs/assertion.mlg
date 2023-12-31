@@ -1,9 +1,8 @@
-# Library that provides single function, that of assertion
+# Library that provides a single function, that of assertion
 
-def assert (bool, ret_value) {
-    # Assert that bool is True by
+def assert (condition) {
+    # Assert that condition is True by
     # dividing on it (If it's False then zero devision error)
-    # If true, return ret_value
     
-    ret (1/bool) * ret_value
+    for (_: 1/condition: 0) {} # To evaluate it at runtime
 }
