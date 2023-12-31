@@ -61,7 +61,7 @@ def len(str) {
     for (i: 1: 1000) { # for (i: 1: MAX_LEN). Calls to this function won't give results larger than that. Don't make it a variable so that the loops get expanded at runtime once
         str = str // 256 # 2^8
         
-        for (_: str @!= 0: 0) { # Real if statement. If you feel that that's cheating, the commented code version below works too
+        for (: str @!= 0: 0) { # Real if statement. If you feel that that's cheating, the commented code version below works too
             ret i
         }
     }
@@ -82,9 +82,9 @@ def charAt (str, i) {
         ret a - ((a // b) * b)
     }
 
-    for (_: 1: len(str) -i) {
+    for (: 1: len(str) -i) {
         str = str // 256
-        for (_: str:str) {}
+        for (: str:str) {} # To optimize
     }
     ret str @% 256
 }

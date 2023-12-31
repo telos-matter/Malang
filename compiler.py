@@ -455,8 +455,11 @@ class Node():
             is `True`
         - `FOR_LOOP`:
             - `for_kw`: the `for` keyword of this for loop. Used to raise errors
+            - `has_var`: a boolean indicating whether this for loop uses / has
+            a variable
             - `var`: a Token.IDENTIFIER representing the variable is going
-            to take the iteration values. Like `i` for example
+            to take the iteration values. Like `i` for example. Only exists
+            if `has_var` is `True`
             - `begin`: a value element representing from where the loop
             should start
             - `end`: a value element representing up to where the loop
@@ -820,10 +823,14 @@ def constructAST (tokens: list[Token]) -> Node:
         open_paren_index = isNextToken(tokens, Token.Type.OPEN_PAREN, i, (f'Expected an open parenthesis `(` after the `for` keyword to define the loop "parameters"', tokens[i -1]))
         close_paren_index = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, open_paren_index +1, tokens[open_paren_index])
         parameters = tokens[open_paren_index +1 : close_paren_index] # Take a sub list to make sure the value elements are never over the () of the loop. Although I think it wouldn't go over even if I work with the full list of tokens. But yie
-        # Get the var
-        i = isNextToken(parameters, Token.Type.IDENTIFIER, 0, (f'Expected the loop variable of this for loop to be the first thing after opening the parenthesis', tokens[open_paren_index]))
-        var = parameters[i]
-        i += 1
+        # Get the var if it has one
+        has_var = False
+        i = 0
+        if isNextToken(parameters, Token.Type.COLON, i, None) is None:
+            i = isNextToken(parameters, Token.Type.IDENTIFIER, i, (f'Expected the loop variable of this for loop to be the first thing after opening the parenthesis, not that', tokens[open_paren_index]))
+            var = parameters[i]
+            has_var = True
+            i += 1
         # Get the begin and end values
         begin, end = None, None
         for iteration in range(2): # Do the same thing twice, once for begin and once for end
@@ -860,7 +867,10 @@ def constructAST (tokens: list[Token]) -> Node:
         close_curly_index = findEnclosingToken(tokens, Token.Type.OPEN_CURLY, Token.Type.CLOSE_CURLY, open_curly_index +1, tokens[open_curly_index])
         body = construct(tokens[open_curly_index +1 : close_curly_index], False)
         
-        return (Node(Node.Type.FOR_LOOP, for_kw=tokens[for_kw_index], var=var, begin=begin, end=end, step=step, starter=tokens[open_curly_index], body=body), close_curly_index +1)
+        if has_var:
+            return (Node(Node.Type.FOR_LOOP, for_kw=tokens[for_kw_index], has_var=has_var, var=var, begin=begin, end=end, step=step, starter=tokens[open_curly_index], body=body), close_curly_index +1)
+        else:
+            return (Node(Node.Type.FOR_LOOP, for_kw=tokens[for_kw_index], has_var=has_var, begin=begin, end=end, step=step, starter=tokens[open_curly_index], body=body), close_curly_index +1)
     
     def construct (tokens: list[Token], root: bool) -> Node | list[Node]:
         '''The actual function that constructs
@@ -1226,7 +1236,7 @@ def constructProgram (ast: Node) -> Instruction:
                         checkCalledFuncs(node.components['end'], scope)
                         checkCalledFuncs(node.components['step'], scope)
                         content.pop(i)
-                        content[i:i] = node.components['body']
+                        content[i:i] = node.components['body'] # Need to check body only once
                         # Don't increment the i because it gets unwrapped at its place
                     
                     else:
@@ -1292,6 +1302,7 @@ def constructProgram (ast: Node) -> Instruction:
         def unwrapForLoop(content: list[Node], where: int, scope: Scope) -> None:
             '''Unwraps the for loop located at `where` after evaluating its
             bounds'''
+            # TODO if the indexes are constants and not vars then unwrap in original content
             
             def insertIteration(for_loop: Node, content: list[Node], where: int, iteration: int, var_value: Number) -> None:
                 '''Insert the body of the `for_loop` in the
@@ -1303,19 +1314,25 @@ def constructProgram (ast: Node) -> Instruction:
                 assert for_loop.type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP {for_loop}"
                 assert isinstance(var_value, Number), f"Not a Number {var_value}"
                 
-                var = for_loop.components['var']
+                has_var = for_loop.components['has_var']
+                if has_var:
+                    var = for_loop.components['var']
                 starter = for_loop.components['starter']
                 body = for_loop.components['body']
                 
-                var_value = Token(Token.Type.NUMBER, var_value, *starter.getSynthesizedInfo())
-                var_assign = Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=var_value)
+                if has_var:
+                    var_value = Token(Token.Type.NUMBER, var_value, *starter.getSynthesizedInfo())
+                    var_assign = Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=var_value)
                 
-                stride = len(body) +1 # +1 for the Node.VAR_ASSIGN
-                # Insert the var assign
+                stride = len(body)
+                if has_var:
+                    stride += 1 # +1 for the Node.VAR_ASSIGN
                 offset = where + stride*iteration
-                content.insert(offset, var_assign)
+                if has_var:
+                    # Insert the var assign
+                    content.insert(offset, var_assign)
+                    offset += 1
                 # Insert the body
-                offset += 1
                 content[offset:offset] = body
             
             assert content[where].type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP"
