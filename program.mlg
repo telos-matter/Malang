@@ -1,6 +1,6 @@
-include str
+include std
+include assert
 
-print("Hello,")
-print(" world!")
+assert(FALSE) # This will get "executed" now
 
-ret txt
+ret 5

@@ -1,4 +1,4 @@
-# Library that provides a single function, that of assertion
+# A library that provides a single function, that of the same name
 
 def assert (condition) {
     # Assert that condition is True by
