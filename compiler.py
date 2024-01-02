@@ -827,7 +827,7 @@ def constructAST (tokens: list[Token]) -> Node:
         has_var = False
         i = 0
         if isNextToken(parameters, Token.Type.COLON, i, None) is None:
-            i = isNextToken(parameters, Token.Type.IDENTIFIER, i, (f'Expected the loop variable of this for loop to be the first thing after opening the parenthesis, not that', tokens[open_paren_index]))
+            i = isNextToken(parameters, Token.Type.IDENTIFIER, i, (f'Expected the loop variable of this for loop to be the first thing after opening the parenthesis, or no variable, but not that', tokens[open_paren_index]))
             var = parameters[i]
             has_var = True
             i += 1
