@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-'''The core file
-It has the possible instructions
-And it is what runs and evaluates programmes'''
+'''The core file. Has the possible operations'''
 
 from enum import Enum
 from typing import Callable, Type
