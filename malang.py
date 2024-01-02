@@ -10,6 +10,7 @@ if __name__ == '__main__':
     
     parser.add_argument('file_path', help='the file to compile and run')
     parser.add_argument('-d', '--debug', action='store_true', help='run with debug info')
+    parser.add_argument('-s', '--show', action='store_true', help='show the operation, a.k.a. the program. Use only with small programs')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose about the program and the output')
     parser.add_argument('-i', '--interpret', action='store_true', help='tries to interpret the output if possible. Either as ASCII chars or a boolean value.')
     

@@ -9,6 +9,7 @@ from typing import Callable, Type
 from numbers import Number
 
 class OP_SET (Enum):
+    '''The possible operations, but I say OP here in the sense of machine OP, like MOV or JMP'''
 #   OP   = (REPR, PRECEDENCE, FUNCTION)
     ADD  = ( '+',          1, lambda a, b: a + b)  # Addition
     SUB  = ( '-',          1, lambda a, b: a - b)  # Subtraction
@@ -46,63 +47,55 @@ class OP_SET (Enum):
     def __repr__(self) -> str:
         return self.__str__()
 
-
-class Instruction ():
-    '''An entire program is a single instruction, that instruction
-    it self may of course contain other instructions'''
+class Operation ():
+    '''An operation object represents a mathematical
+    operation (+, -, *,.., namely one from the OP_SET)
+    that has an arity of two, e.i. it takes 2 inputs. These two inputs
+    however can be other operations, for example: 1 + 2 + 3 is in fact
+    (1 + 2) + 3, where the top operation is the second addition and it takes
+    what ever the result of (1 + 2) is and adds it to 3.\n
+    And so, an entire program is a SINGLE
+    operation (and usually it's a VERY BIG one)\n
+    ### Object structure:\n
+    - Each operation has exactly two arguments, `a` and `b`,
+    they are either operations or numbers.
+    - Each operation
+    keeps track of how many sub operations it has plus it self
+    with the `operations_count` attribute. Know that this number
+    refers to how many operation there are mathematically,
+    and not actual Operations' objects (because most of the Operation
+    objects are reused multiple times)
+    - When an Operation is created, its result is immediately computed
+    and stored. This is to avoid overflowing the stack with function
+    calls (that is, in case they were created and then evaluated recursively).
+    '''
     
-    def __init__(self, op: OP_SET, a: Number | Type[Instruction], b: Number | Type[Instruction]) -> None:
-        '''`op`: the operation to preform\n
-        `a`: the first argument as a number or another Instruction\n
-        `b`: the second argument as a number or another Instruction\n'''
+    def __init__(self, op: OP_SET, a: Number | Type[Operation], b: Number | Type[Operation]) -> None:
+        '''`op`: the operation to preform, one from the OP_SET\n
+        `a`: the first argument as a number or another Operation\n
+        `b`: the second argument as a number or another Operation\n'''
+        assert type(op) == OP_SET, f"Not from the OP set: {op}"
+        assert type(a) == Operation or isinstance(a, Number), f"Neither a Number nor an Operation: {a}"
+        assert type(b) == Operation or isinstance(b, Number), f"Neither a Number nor an Operation: {b}"
+        
+        operations_count = 1 # Self
+        a_value = a
+        b_value = b
+        # If a or b are Operations:
+        #   - Add their count
+        #   - Get their results
+        if type(a) == Operation:
+            operations_count += a.operations_count
+            a_value = a.result
+        if type(b) == Operation:
+            operations_count += b.operations_count
+            b_value = b.result
+        
+        self.operations_count = operations_count
         self.op = op
         self.a = a
         self.b = b
-    
-    def justEvaluate(self) -> Number:
-        '''Unlike `evaluate(self)`, this function
-        just evaluates this instruction'''
-        if type(self.a) == Instruction:
-            self.a = self.a.justEvaluate()
-        
-        if type(self.b) == Instruction:
-            self.b = self.b.justEvaluate()
-        
-        return self.op.function(self.a, self.b)
-    
-    def evaluate(self) -> tuple[Number, int]:
-        '''Evaluates self and returns how many instructions it executed'''
-        counter = 1
-        if type(self.a) == Instruction:
-            self.a, count = self.a.evaluate()
-            counter += count
-        if type(self.b) == Instruction:
-            self.b, count = self.b.evaluate()
-            counter += count
-        
-        return (self.op.function(self.a, self.b), counter)
-    
-    def runProgram(self) -> tuple[Number, float, int]:
-        '''Runs the program and returns information about it\n
-        Namely:\n
-        - The result\n
-        - How long it took to compute in seconds\n
-        - How many instructions it computed'''
-        
-        import sys
-        sys.setrecursionlimit(10_000) # If you are wondering, because I was, if the change is global (to all future python instances), no it is not, I tested it
-        
-        import time
-        
-        start = time.time()
-        result, counter = self.evaluate() # These instructions are close together so that it misses no milliseconds                                                                                                                                                                                               # A joke obviously
-        end = time.time()
-        duration = end - start
-        
-        if result == int(result):
-            result = int(result)
-        
-        return (result, duration, counter)
+        self.result = op.function(a_value, b_value)
     
     def __str__(self) -> str:
         return f"({self.a} {self.op} {self.b})"

@@ -1,6 +1,9 @@
 include std
-include assert
 
-assert(FALSE) # This will get "executed" now
+max = 0
 
-ret 5
+for (i: 1: 1000) {
+    max = max(i, max)
+}
+
+ret max

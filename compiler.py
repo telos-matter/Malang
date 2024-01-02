@@ -4,7 +4,7 @@ if __name__ == '__main__':
     raise Exception('The compiler should not be run directly')
 
 import os
-from core import OP_SET, Instruction
+from core import OP_SET, Operation
 from typing import Type
 from enum import Enum, auto
 from numbers import Number
@@ -14,7 +14,7 @@ class Token ():
     class Type (Enum):
         '''Token types'''
         NUMBER        = auto() # Any number
-        OP            = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
+        OP            = auto() # Any operation of the allowed operations from the set of operations (+, -, *..)
         EOL           = auto() # End of a line
         OPEN_PAREN    = auto() # Opening parenthesis `(`
         CLOSE_PAREN   = auto() # Closing parenthesis `)`
@@ -400,7 +400,7 @@ class Node():
         '''Node types'''
         ROOT        = auto() # Root node of the content. Will only contain instruction nodes. Only 1 exists.
         VAR_ASSIGN  = auto() # Assigning to a variable
-        OP          = auto() # Any operation of the allowed operations from the set of instruction (+, -, *..)
+        OP          = auto() # Any operation of the allowed operations from the set of operations (+, -, *..)
         ORDER_PAREN = auto() # Order parenthesis. They can only contain a value element
         FUNC_DEF    = auto() # Function definition. Can have nested functions. Functions overloading is allowed
         FUNC_CALL   = auto() # Function call
@@ -962,9 +962,9 @@ def constructAST (tokens: list[Token]) -> Node:
     return construct(tokens, True)
 
 
-def constructProgram (ast: Node) -> Instruction:
+def constructProgram (ast: Node) -> Operation:
     '''Constructs the program by translating
-    Nodes into Instructions (only a single Instruction
+    Nodes into Operations (only a single Operation
     is returned of course)\n
     Also checks for the validity of the code; referencing
     a none existing variable, defining an already existing
@@ -1095,7 +1095,7 @@ def constructProgram (ast: Node) -> Instruction:
             - `parent`: the parent scope if it exists\n
             - `return_var`: the return variable of this scope
             that is synthesized from the `starter`\n
-            - `vars`: a `dict` that maps a Token.IDENTIFIER to an Instruction / Number\n
+            - `vars`: a `dict` that maps a Token.IDENTIFIER to an Operation / Number\n
             - `funcs`: a `list` of Node.FUNC_DEF'''
             
             return_var = Token(Token.Type.IDENTIFIER, RETURN_VAR_NAME, *starter.getSynthesizedInfo())
@@ -1105,7 +1105,7 @@ def constructProgram (ast: Node) -> Instruction:
             self.vars = {return_var: 0}
             self.funcs = []
         
-        def resolveVar (self, identifier: Token) -> Number | Instruction:
+        def resolveVar (self, identifier: Token) -> Number | Operation:
             '''Looks for the variable recursively and returns its state\n
             If it doesn't exist then its an InvalidCode exception'''
             
@@ -1118,7 +1118,7 @@ def constructProgram (ast: Node) -> Instruction:
                 scope = scope.parent
             invalidCode(f"Unknown variable `{identifier}`", identifier)
         
-        def resolveFuncCall (self, func_call: Node, args: list[Number | Instruction]) -> Number | Instruction:
+        def resolveFuncCall (self, func_call: Node, args: list[Number | Operation]) -> Number | Operation:
             '''Looks for the function recursively and
             calls (evaluates) it with the given arguments. If
             the function does not exists then its an InvalidCode exception'''
@@ -1133,7 +1133,7 @@ def constructProgram (ast: Node) -> Instruction:
                 func_scope.setVarState(param, False, arg)
             return evaluateScope(func_def.components['body'], func_scope)
         
-        def setVarState (self, identifier: Token, ext: bool, state: Number | Instruction) -> None:
+        def setVarState (self, identifier: Token, ext: bool, state: Number | Operation) -> None:
             '''Sets the new state for a variable, and if it doesn't exist add
             it, unless it's an external variable, then it's an InvalidCode exception'''
             assert identifier.type == Token.Type.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
@@ -1248,15 +1248,15 @@ def constructProgram (ast: Node) -> Instruction:
             validateScopeFuncCalls(func_def.components['body'], self, func_def.components['func'])
             self.funcs.append(func_def)
         
-        def getReturnVarState (self) -> Number | Instruction:
+        def getReturnVarState (self) -> Number | Operation:
             '''Returns the return variable state'''
             try:
                 return self.vars[self.return_var]
             except KeyError:
                 assert False, f"Unreachable" # The return var is assigned to this scope at __init__
     
-    def processValueElement (value_element: Node | Token, scope: Scope) -> Number | Instruction:
-            '''Processes a value element and returns an instruction
+    def processValueElement (value_element: Node | Token, scope: Scope) -> Number | Operation:
+            '''Processes a value element and returns an operation
             or a number representing it'''
             
             assert isValueElement(value_element), f"Not a value element {value_element}"
@@ -1273,7 +1273,7 @@ def constructProgram (ast: Node) -> Instruction:
                     op = OP_SET.fromSymbol(value_element.components['op'].lexeme)
                     l_value = processValueElement(value_element.components['l_value'], scope)
                     r_value = processValueElement(value_element.components['r_value'], scope)
-                    return Instruction(op, l_value, r_value)
+                    return Operation(op, l_value, r_value)
                 
                 elif value_element.type == Node.Type.ORDER_PAREN:
                     return processValueElement(value_element.components['value'], scope)
@@ -1289,10 +1289,10 @@ def constructProgram (ast: Node) -> Instruction:
             
             assert False, f"Unreachable"
     
-    def evaluateScope (content: list[Node], scope: Scope | tuple[Token , Scope | None]) -> Number | Instruction:
+    def evaluateScope (content: list[Node], scope: Scope | tuple[Token , Scope | None]) -> Number | Operation:
         '''Evaluates a scope and returns 
         the return variable value, either a Number
-        or an Instruction.
+        or an Operation.
         Either a Scope is given or a tuple
         to create a new one\n
         If a tuple is given it should contain:\n
@@ -1347,8 +1347,8 @@ def constructProgram (ast: Node) -> Instruction:
             ]
             for i, parameter in enumerate(parameters):
                 parameter = processValueElement(parameter, scope)
-                if type(parameter) == Instruction:
-                    parameter = parameter.justEvaluate()
+                if type(parameter) == Operation:
+                    parameter = parameter.result
                 parameters[i] = parameter
             begin, end, step = parameters
             
@@ -1412,7 +1412,7 @@ def constructProgram (ast: Node) -> Instruction:
     return_value = evaluateScope(ast.components['content'], (None, ast.components['boc']))
     
     if isinstance(return_value, Number):
-        return_value = Instruction(OP_SET.ADD, return_value, 0)
+        return_value = Operation(OP_SET.ADD, return_value, 0)
     return return_value
 
 
@@ -1424,6 +1424,7 @@ def compile (args: dict) -> None:
     
     FILE_PATH = args['file_path']
     VERBOSE = args['verbose']
+    SHOW = args['show']
     DEBUG = args['debug']
     INTERPRET = args['interpret']
     
@@ -1446,17 +1447,25 @@ def compile (args: dict) -> None:
             print("\t-", node)
     
     if VERBOSE:
-        print('👨🏻‍🍳 Constructing the program..')
+        print('👨🏻‍🍳 Constructing and computing the operation..')
     program = constructProgram(ast)
     if VERBOSE:
-        print('✅ Constructed the program')
-    if DEBUG:
+        print('✅ Constructed and computed the operation')
+    if SHOW:
+        print("NOTE: Printing the operation could be, literally, physically impossible if the program is too big. Consider interrupting (Ctrl + c) this process and re-running it without the `-s` option. If you finished reading this and it still didn't print then it's probably not going to..")
+        print('Operation:')
         str_program = str(program)[1:-1]
-        print("Program:", str_program, sep='\n')
+        print(str_program)
     
-    if VERBOSE:
-        print('👨🏻‍🍳 Running the program..')
-    original_result, program_time, count = program.runProgram()
+    count = program.operations_count
+    if count > 10**100:
+        import math
+        count = int(math.log10(count)) # Actually surprised log is implemented in a way that it can handle this big of numbers. It wouldn't be dividing on 10 and counting, would it?
+        count = f'around 10^{count}'
+    
+    original_result = program.result
+    if original_result == int(original_result):
+        original_result = int(original_result)
     
     result = original_result
     if INTERPRET:
@@ -1467,23 +1476,21 @@ def compile (args: dict) -> None:
         elif result >= 0 and int(result) == result:
             chars = ''
             while result > 0:
-                num = result % 2**8
-                result //= 2**8
+                num = result & 0b1111_1111
+                result = result >> 8
                 chars += chr(num)
             result = chars[:: -1]
     
     end = time.time()
-    compiler_time = end - start
+    duration = end - start
     
     if VERBOSE:
-        print('✅ Program ran successfully')
         if INTERPRET:
             print(f"📠 The interpreted result is {result}")
             print(f"🤖 The raw result is {original_result}")
         else:
             print(f"🧾 The result is {result}")
-        print(f"⏱️  It was computed in {program_time} seconds")
-        print(f"🏃🏻 It took {count} instruction{['', 's'][0 if count == 1 else 1]} to compute the result")
-        print(f"⏳ This whole process took {compiler_time} seconds")
+        print(f"🏃🏻 It took {count} operation{['', 's'][0 if count == 1 else 1]} to compute the result")
+        print(f"⏱️  This whole process took {duration} seconds")
     else:
         print(result)
