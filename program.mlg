@@ -1,6 +1,1 @@
-include std
-include str
-
-print("test")
-print(" test")
-ret txt
+include std, str, assert

@@ -230,6 +230,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
         
         NUMBER_PERIOD = '.' # 3.14
         NUMBER_SEP    = '_' # 100_00
+        INCLUDE_SEP   = ',' # include std, str
         
         content = content.splitlines() # Returns an empty list in case of empty content
         tokens = []
@@ -297,15 +298,17 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         tokenType = Token.Type.FOR_KW
                     
                     elif identifier == 'include':
-                        included_file_path = line[j +1:]
-                        result = resolveFile(included_file_path, main_file_path)
-                        if result is None:
-                            temp_token = Token(None, line[i :], line, len(line) -i, file_path, line_index, i)
-                            raise Exception(f"❌ NO SUCH FILE: Couldn't locate this file `{included_file_path}` that you wanted to include\n{temp_token.pointOut()}\n{temp_token.location()}")
-                        included_file_content, included_file_abs_path = result
-                        if included_file_abs_path not in includes:
-                            includes.add(included_file_abs_path)
-                            tokens.extend(parse(included_file_content, included_file_path, False, main_file_path, includes))
+                        # Split by INCLUDE_SEP and strip
+                        included_files_paths = [path.strip() for path in line[j +1:].split(INCLUDE_SEP)]
+                        for included_file_path in included_files_paths:
+                            result = resolveFile(included_file_path, main_file_path)
+                            if result is None:
+                                temp_token = Token(None, line[i :], line, len(line) -i, file_path, line_index, i)
+                                raise Exception(f"❌ NO SUCH FILE: Couldn't locate this file `{included_file_path}` that you wanted to include in here\n{temp_token.pointOut()}\n{temp_token.location()}")
+                            included_file_content, included_file_abs_path = result
+                            if included_file_abs_path not in includes:
+                                includes.add(included_file_abs_path)
+                                tokens.extend(parse(included_file_content, included_file_path, False, main_file_path, includes))
                         break
                     
                     else:
