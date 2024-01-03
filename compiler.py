@@ -1367,8 +1367,6 @@ def constructProgram (ast: Node) -> Operation:
             - `parent_scope`: the parent scope or `None` in case of the main scope\n
             - `starter`: a token that started this scope. To synthesize the return variable\n'''
         
-        print(f"entering Content:\n{content}") # TODO remove
-
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
@@ -1400,9 +1398,7 @@ def constructProgram (ast: Node) -> Operation:
                     return scope.getReturnVarState()
             
             elif nodeType == Node.Type.FOR_LOOP:
-                print(f"before unwrap Content:\n{content}") # TODO remove
                 unwrapForLoop(content, i, scope)
-                print(f"after unwrap Content:\n{content}") # TODO remove
                 # Don't increment i because it gets unwrapped at its place
             
             else:
