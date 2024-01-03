@@ -11,7 +11,7 @@ def next () {
     M = RAND_MAX +1
     
     @%
-    def positiveMod (a, b) {
+    def NNMod (a, b) {
         ret a - ((a // b) * b)
     }
     

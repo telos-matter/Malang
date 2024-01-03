@@ -16,19 +16,19 @@ def null (x) {
     # Checks if a number is null, a.k.a equal to zero
     # Also the backbone of this whole thing
     
-    def positiveMod (a, b) {
+    def NNMod (a, b) {
         ret a - ((a // b) * b)
     }
     
-    def positiveFloor (x) {
-        ret x - positiveMod(x, 1)
+    def NNFloor (x) {
+        ret x - NNMod(x, 1)
     }
     
     def function (x) {
         ret abs(x) / (abs(x) +10) # 10 for "damping", could do with any positive value
     }
     
-    ret positiveFloor(1 -function(x))
+    ret NNFloor(1 -function(x))
 }
 
 $!
@@ -176,7 +176,7 @@ def min (a, b) {
 
 @%
 def mod (a, b) {
-    def positiveMod (a, b) {
+    def NNMod (a, b) {
         ret a - ((a // b) * b)
     }
     
@@ -184,9 +184,9 @@ def mod (a, b) {
         negative(a),
         {
             a = abs(a)
-            ret b - positiveMod(a, b)
+            ret b - NNMod(a, b)
         },
-        positiveMod(a, b)
+        NNMod(a, b)
     )
 }
 

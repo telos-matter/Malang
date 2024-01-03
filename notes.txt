@@ -19,3 +19,5 @@ TODOS:
 
 
 - Im actually not sure how does the optimization thing work. Does it really even work? Since the instructions always refer to the same object, then there is no need for it because it always gets optimized. However max_stack_depth do gets reached when I don't use the opt function
+
+- NN in methods refer to non-negative, meaning it only works properly with positive numbers or null

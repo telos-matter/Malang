@@ -21,25 +21,26 @@
 #   in order for the functions to work (because of float limitations in
 #   the abs function I guess? Not 100% sure). And namely they
 #   are redefined to take into consideration that
-#   they will be working with positivie numbers only. PO: Positive Numbers
+#   they will be working with non-negative numbers
+#   only, e.i. postive or null. N.N.: Non-Negative
 
 
 def len(str) {
 
-    def PONull (x) {
-        def POMod (a, b) {
+    def NNNull (x) {
+        def NNMod (a, b) {
             ret a - ((a // b) * b)
         }
         
-        def POFloor (x) {
-            ret x - POMod(x, 1)
+        def NNFloor (x) {
+            ret x - NNMod(x, 1)
         }
         
         def function (x) {
             ret x / (x +10)
         }
         
-        ret POFloor(1 -function(x))
+        ret NNFloor(1 -function(x))
     }
 
     $!
@@ -48,13 +49,13 @@ def len(str) {
     }
 
     @==
-    def POEqualNumber (a, b) {
-        ret PONull(a - b)
+    def NNEqualNumber (a, b) {
+        ret NNNull(a - b)
     }
 
     @!=
-    def PODiffNumber (a, b) {
-        ret $! PONull(a - b)
+    def NNDiffNumber (a, b) {
+        ret $! NNNull(a - b)
     }
 
     # The len function
@@ -78,7 +79,7 @@ def len(str) {
 # API limitation: str can't be longer than MAX_LEN
 def charAt (str, i) {
     @%
-    def POMod (a, b) { # Remove this function and include the std library if you want to see why I redefined them
+    def NNMod (a, b) { # Remove this function and include the std library if you want to see why I redefined them
         ret a - ((a // b) * b)
     }
 
