@@ -1,9 +1,11 @@
-include std
 
-max = 0
-
-for (i: 1: 1000) {
-    max = max(i, max)
+i = 0
+for (f:1:3) { # Gets unwrapped before
+    i = f
 }
 
-ret max
+for (f:1:i) { # Gets unwrapped after
+    foo = 0
+}
+
+ret i

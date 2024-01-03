@@ -412,7 +412,7 @@ class Node():
         ''' The components that each nodeType has:\n
         - `ROOT`:
             - `boc`: the beginning of content Token
-            - `content`: a list of the instruction nodes
+            - `content`: a list of the instruction nodes. The compiled files
             - `eoc`: the end of content Token
         - `VAR_ASSIGN`:
             - `var`: an identifier token representing the variable getting assigned to
@@ -1207,7 +1207,7 @@ def constructProgram (ast: Node) -> Operation:
                     assert False, f"Unreachable"
                 
                 scope = Scope(parent_scope, starter)
-                content = content.copy() # Make a copy to be able to append Node.FOR_LOOP content
+                content = content.copy() # Make a copy to be able to append Node.FOR_LOOP content so that it's checked too
                 
                 i = 0
                 while i < len(content):
@@ -1289,6 +1289,74 @@ def constructProgram (ast: Node) -> Operation:
             
             assert False, f"Unreachable"
     
+    def unwrapForLoop(content: list[Node], where: int, scope: Scope) -> None:
+        '''Unwraps the for loop located at `where` after evaluating its
+        bounds'''
+        
+        def insertIteration(for_loop: Node, content: list[Node], where: int, iteration: int, var_value: Number) -> None:
+            '''Insert the body of the `for_loop` in the
+            appropriate position for the given iteration (computes it
+            from the iteration and length of the body)\n
+            `where`: the original `for_loop` position\n
+            `var_value`: the value to assign to the loop's var
+            in this iteration if it has a var'''
+            assert for_loop.type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP {for_loop}"
+            assert isinstance(var_value, Number), f"Not a Number {var_value}"
+            
+            has_var = for_loop.components['has_var']
+            if has_var:
+                var = for_loop.components['var']
+            starter = for_loop.components['starter']
+            body = for_loop.components['body']
+            
+            if has_var:
+                var_value = Token(Token.Type.NUMBER, var_value, *starter.getSynthesizedInfo())
+                var_assign = Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=var_value)
+            
+            stride = len(body)
+            if has_var:
+                stride += 1 # +1 for the Node.VAR_ASSIGN
+            offset = where + stride*iteration
+            if has_var:
+                # Insert the var assign
+                content.insert(offset, var_assign)
+                offset += 1
+            # Insert the body
+            content[offset:offset] = body
+        
+        assert content[where].type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP"
+        
+        for_loop = content.pop(where) # We remove it in all cases
+        
+        # Get the loop's parameters
+        parameters = [
+            for_loop.components['begin'],
+            for_loop.components['end'],
+            for_loop.components['step'],
+        ]
+        for i, parameter in enumerate(parameters):
+            parameter = processValueElement(parameter, scope)
+            if type(parameter) == Operation:
+                parameter = parameter.result
+            parameters[i] = parameter
+        begin, end, step = parameters
+        
+        if step == 0:
+            invalidCode(f"For loops can't have a zero step (infinite loop). This for loop step was evaluated and it was zero", for_loop.components['for_kw'])
+        
+        # Now we iterate and insert the body
+        iteration = 0
+        if step > 0:
+            while begin <= end:
+                insertIteration(for_loop, content, where, iteration, begin)
+                begin += step
+                iteration += 1
+        else:
+            while end >= begin:
+                insertIteration(for_loop, content, where, iteration, end)
+                end += step
+                iteration += 1
+    
     def evaluateScope (content: list[Node], scope: Scope | tuple[Token , Scope | None]) -> Number | Operation:
         '''Evaluates a scope and returns 
         the return variable value, either a Number
@@ -1299,81 +1367,14 @@ def constructProgram (ast: Node) -> Operation:
             - `parent_scope`: the parent scope or `None` in case of the main scope\n
             - `starter`: a token that started this scope. To synthesize the return variable\n'''
         
-        def unwrapForLoop(content: list[Node], where: int, scope: Scope) -> None:
-            '''Unwraps the for loop located at `where` after evaluating its
-            bounds'''
-            # TODO if the indexes are constants and not vars then unwrap in original content
-            
-            def insertIteration(for_loop: Node, content: list[Node], where: int, iteration: int, var_value: Number) -> None:
-                '''Insert the body of the `for_loop` in the
-                appropriate position for the given iteration (computes it
-                from the iteration and length of the body)\n
-                `where`: the original `for_loop` position\n
-                `var_value`: the value to assign to the loop's var
-                in this iteration'''
-                assert for_loop.type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP {for_loop}"
-                assert isinstance(var_value, Number), f"Not a Number {var_value}"
-                
-                has_var = for_loop.components['has_var']
-                if has_var:
-                    var = for_loop.components['var']
-                starter = for_loop.components['starter']
-                body = for_loop.components['body']
-                
-                if has_var:
-                    var_value = Token(Token.Type.NUMBER, var_value, *starter.getSynthesizedInfo())
-                    var_assign = Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=var_value)
-                
-                stride = len(body)
-                if has_var:
-                    stride += 1 # +1 for the Node.VAR_ASSIGN
-                offset = where + stride*iteration
-                if has_var:
-                    # Insert the var assign
-                    content.insert(offset, var_assign)
-                    offset += 1
-                # Insert the body
-                content[offset:offset] = body
-            
-            assert content[where].type == Node.Type.FOR_LOOP, f"Not a Node.FOR_LOOP"
-            
-            for_loop = content.pop(where) # We remove it in all cases
-            
-            # Get the loop's parameters
-            parameters = [
-                for_loop.components['begin'],
-                for_loop.components['end'],
-                for_loop.components['step'],
-            ]
-            for i, parameter in enumerate(parameters):
-                parameter = processValueElement(parameter, scope)
-                if type(parameter) == Operation:
-                    parameter = parameter.result
-                parameters[i] = parameter
-            begin, end, step = parameters
-            
-            if step == 0:
-                invalidCode(f"For loops can't have a zero step (infinite loop). This for loop step was evaluated and it was zero", for_loop.components['for_kw'])
-            
-            # Now we iterate and insert the body
-            iteration = 0
-            if step > 0:
-                while begin <= end:
-                    insertIteration(for_loop, content, where, iteration, begin)
-                    begin += step
-                    iteration += 1
-            else:
-                while end >= begin:
-                    insertIteration(for_loop, content, where, iteration, end)
-                    end += step
-                    iteration += 1
-        
+        print(f"entering Content:\n{content}") # TODO remove
+
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
             scope = Scope(parent_scope, starter)
         
-        content = content.copy() # Make a copy in which the for loop is going to get unwrapped for this scope
+        content = content.copy() # Make a copy in which the for loops (if they exist) are going to get unwrapped for this scope
         i = 0
         while i < len(content):
             node = content[i]
@@ -1399,7 +1400,9 @@ def constructProgram (ast: Node) -> Operation:
                     return scope.getReturnVarState()
             
             elif nodeType == Node.Type.FOR_LOOP:
+                print(f"before unwrap Content:\n{content}") # TODO remove
                 unwrapForLoop(content, i, scope)
+                print(f"after unwrap Content:\n{content}") # TODO remove
                 # Don't increment i because it gets unwrapped at its place
             
             else:
@@ -1409,8 +1412,25 @@ def constructProgram (ast: Node) -> Operation:
     
     assert ast.type == Node.Type.ROOT, f"Not Node.ROOT"
     
-    return_value = evaluateScope(ast.components['content'], (None, ast.components['boc']))
+    # We unwrap the constant Node.FOR_LOOPs (with Token.NUMBER indexes and step) once before starting
+    content = ast.components['content']
+    i = 0
+    while i < len(content):
+        node = content[i]
+        comps = node.components
+        # If it's a Node.FOR_LOOP with Token.NUMBER for indexes and the step
+        if (node.type == Node.Type.FOR_LOOP and
+                type(comps['begin']) == type(comps['end']) == type(comps['step']) == Token and
+                comps['begin'].type == comps['end'].type == comps['step'].type == Token.Type.NUMBER):
+            unwrapForLoop(content, i, None) # NOTE: ATM having scope == None works fine because it does not need it. If we change something later on in the called functions then fix this
+            # Don't increment the i because it gets unwrapped in its place
+        
+        else:
+            i += 1
     
+    # After unwrapping the constant Node.FOR_LOOPs, we evaluate the main scope
+    return_value = evaluateScope(content, (None, ast.components['boc']))
+    # If the resulting value is just a Number then make the simple operation of that_number + 0. So that's always an operation
     if isinstance(return_value, Number):
         return_value = Operation(OP_SET.ADD, return_value, 0)
     return return_value
