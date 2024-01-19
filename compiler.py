@@ -1382,8 +1382,6 @@ def constructProgram (ast: Node) -> Operation:
             - `parent_scope`: the parent scope or `None` in case of the main scope\n
             - `starter`: a token that started this scope. To synthesize the return variable\n'''
         
-        print('Content:', content) # TODO remove
-        
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
