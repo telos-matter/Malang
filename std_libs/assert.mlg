@@ -4,5 +4,5 @@ def assert (condition) {
     # Assert that condition is True by
     # dividing on it (If it's False then zero devision error)
     
-    for (: 1/condition: 0) {} # To evaluate it at runtime
+    for (1/condition: -1) {} # To evaluate it at runtime
 }
