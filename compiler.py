@@ -819,13 +819,88 @@ def constructAST (tokens: list[Token]) -> Node:
         `tokens`: normally, a list of all the tokens\n
         `for_kw_index`: the Token.FOR_KW index by which you
         knew this is a for loop'''
+        
         i = for_kw_index # Just for ease of reference
         assert tokens[i].type == Token.Type.FOR_KW, f"Not Token.FOR_KW"
         
         i += 1
         open_paren_index = isNextToken(tokens, Token.Type.OPEN_PAREN, i, (f'Expected an open parenthesis `(` after the `for` keyword to define the loop "parameters"', tokens[i -1]))
         close_paren_index = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, open_paren_index +1, tokens[open_paren_index])
-        parameters = tokens[open_paren_index +1 : close_paren_index] # Take a sub list to make sure the value elements are never over the () of the loop. Although I think it wouldn't go over even if I work with the full list of tokens. But yie
+        
+        parameters = tokens[open_paren_index +1 : close_paren_index]
+        # Split the parameters by Token.COLON
+        temp = []
+        buffer = []
+        delimiters = [] # Used to processValueExpressions of the parameters
+        # Add the open parenthesis
+        delimiters.append(tokens[open_paren_index])
+        for param_i, parameter in enumerate(parameters):
+            if parameter.type == Token.Type.COLON:
+                if len(buffer) == 0:
+                    syntaxError(f"There should be something before this colon", parameter)
+                if param_i == len(parameters) -1:
+                    syntaxError(f"There should be something after this colon, it can't be the last thing. Remove it if there should be nothing after it", parameter)
+                delimiters.append(parameter)
+                temp.append(buffer)
+                buffer = []
+            else:
+                buffer.append(parameter)
+                # If last iteration, append
+                if param_i == len(parameters) -1:
+                    temp.append(buffer)
+        parameters = temp
+        # Check how many parameters are there
+        # At least 1, the end index
+        if len(parameters) < 1:
+            syntaxError(f"Must specify at least the end index of this for loop", tokens[for_kw_index])
+        # And no more than 4, var: begin: end: step
+        if len(parameters) > 4:
+            syntaxError(f"You have {len(parameters) -4} too many `:` in your for loop. Check the proper syntax", tokens[for_kw_index])
+        # Put the parameters accordingly
+        has_var = False # We assume there is no var at first
+        var, begin, end, step = None, None, None, None
+        # If there is only 1 parameter, it's the end index parameter
+        if len(parameters) == 1:
+            end = parameters[0]
+        # If there are 2, it's the begin and end
+        elif len(parameters) == 2:
+            begin, end = parameters
+        # If there are 3, it's var, begin and end
+        elif len(parameters) == 3:
+            has_var = True
+            var, begin, end = parameters
+        # Otherwise, if 4, it's var, begin, end, and step
+        elif len(parameters) == 4:
+            has_var = True
+            var, begin, end, step = parameters
+        else:
+            assert False, f"Unreachable, checked bounds before"
+        assert end != None, f"Unreachable, something is always assigned to end"
+        # Check validity of the parameters
+        # Check that var, if it exists, is a Token.IDENTIFIER
+        if has_var:
+            if len(var) != 1 or var[0].type != Token.Type.IDENTIFIER:
+                syntaxError(f"There should be a single identifier representing the variable of this for loop, first thing after the open parenthesis", tokens[for_kw_index])
+            # Get the var
+            var = var[0]
+            # Remove the open parenthesis because it's taken by the var
+            delimiters.pop(0)
+        # Check begin, end, step
+        temp = [begin, end, step]
+        delimiter_i = 0 # Only incremented if `it` is not None
+        for it_i, it in enumerate(temp.copy()):
+            if it is not None:
+                # Get its appropriate delimited
+                delimiter = delimiters[delimiter_i]
+                # Increment delimiter_i for the next iteration
+                delimiter_i += 1
+                # Process `it`
+                processValueExpression(it, delimiter, 0, True, False, False, True)
+
+
+
+            # colons wont be aligned with temp if only begin and end exist for example, maybe change colons to delimeter or smth and add the ( if there is no var
+        
         # Get the var if it has one
         has_var = False
         i = 0

@@ -1,1 +1,14 @@
-include std, str, assert
+
+for (::::::::) {}
+
+for (var:begin:end:step) {}
+
+for (var:begin:end) {}
+
+for (begin:end) {}
+
+for (end) {}
+
+for (20) {
+    res = res + 1
+}
