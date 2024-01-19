@@ -85,7 +85,6 @@ def charAt (str, i) {
 
     for (len(str) -i) {
         str = str // 256
-        for (str:str) {} # To optimize
     }
     ret str @% 256
 }
