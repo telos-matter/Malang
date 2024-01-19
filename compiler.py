@@ -1382,6 +1382,8 @@ def constructProgram (ast: Node) -> Operation:
             - `parent_scope`: the parent scope or `None` in case of the main scope\n
             - `starter`: a token that started this scope. To synthesize the return variable\n'''
         
+        print('Content:', content) # TODO remove
+        
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
@@ -1421,6 +1423,34 @@ def constructProgram (ast: Node) -> Operation:
         
         return scope.getReturnVarState()
     
+    def isValueElementConstant (value: Token | Node) -> bool:
+        '''Determines if a value element is constant.
+        That is, it can only contain Token.NUMBER, Token.OP
+        or Node.ORDER_PAREN.\n
+        Could extend the definition to include Node.FUNC_CALL
+        with functions that return constant values, but
+        I'm not too fucked to do that.'''
+        assert isValueElement(value), f"Not a value element {value}"
+        
+        if type(value) == Token:
+            if value.type == Token.Type.NUMBER:
+                return True
+            elif value.type == Token.Type.IDENTIFIER:
+                return False
+            else:
+                assert False, f"Unreachable, checked that it is a Token value element before"
+        elif type(value) == Node:
+            if value.type == Node.Type.OP:
+                return isValueElementConstant(value.components['l_value']) and isValueElementConstant(value.components['r_value'])
+            elif value.type == Node.Type.ORDER_PAREN:
+                return isValueElementConstant(value.components['value'])
+            elif value.type in [Node.Type.FUNC_CALL, Node.Type.ANON_FUNC]:
+                return False
+            else:
+                assert False, f"Unreachable, checked that it is a Node value element before"
+        else:
+            assert False, f"Unreachable, checked that it is a value element before"
+    
     assert ast.type == Node.Type.ROOT, f"Not Node.ROOT"
     
     # We unwrap the constant Node.FOR_LOOPs (with Token.NUMBER indexes and step) once before starting
@@ -1429,10 +1459,11 @@ def constructProgram (ast: Node) -> Operation:
     while i < len(content):
         node = content[i]
         comps = node.components
-        # If it's a Node.FOR_LOOP with Token.NUMBER for indexes and the step
+        # If it's a Node.FOR_LOOP with constant indexes and step
         if (node.type == Node.Type.FOR_LOOP and
-                type(comps['begin']) == type(comps['end']) == type(comps['step']) == Token and
-                comps['begin'].type == comps['end'].type == comps['step'].type == Token.Type.NUMBER):
+                isValueElementConstant(comps['begin']) and
+                isValueElementConstant(comps['end']) and
+                isValueElementConstant(comps['step'])):
             unwrapForLoop(content, i, None) # NOTE: ATM having scope == None works fine because it does not need it. If we change something later on in the called functions then fix this
             # Don't increment the i because it gets unwrapped in its place
         

@@ -1,4 +1,10 @@
 
-for (20) {
+# Do not get expanded
+for (res) {
+
+}
+
+# Does get expanded
+for ((1*3)) {
     res = res + 1
 }
