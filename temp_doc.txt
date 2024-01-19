@@ -86,3 +86,7 @@ For loops bounds are included, but basically, it keeps adding the step until its
 Or if the step is negative keeps on subtracting until greater than or equal
 Since they get computed at runtime / compile time, you can make them behave like actual if statments
 So they are really exotic compared to the rest of the lang
+
+For loops can now have just end index
+
+The doc is not all uptodate and has contradictions

@@ -568,7 +568,7 @@ def constructAST (tokens: list[Token]) -> Node:
         the parameters specify whether it can have it or not\n
         `tokens`: normally, the list of all the tokens\n
         `parent_token`: the token that "wants" this value expression. To raise a SyntaxError with in case of an error\n
-        `start_index`: from where to start processing\n
+        `start_index`: from where to start processing. Safe if it's outsides the `tokens` bound\n
         `skip_eols`: skip EOLs or terminate when encountered\n
         `accepts_semicolons`: can a semicolon be in this value expression?\n
         `accepts_comas`: can a coma be in this value expression?\n
@@ -827,36 +827,24 @@ def constructAST (tokens: list[Token]) -> Node:
         open_paren_index = isNextToken(tokens, Token.Type.OPEN_PAREN, i, (f'Expected an open parenthesis `(` after the `for` keyword to define the loop "parameters"', tokens[i -1]))
         close_paren_index = findEnclosingToken(tokens, Token.Type.OPEN_PAREN, Token.Type.CLOSE_PAREN, open_paren_index +1, tokens[open_paren_index])
         
-        parameters = tokens[open_paren_index +1 : close_paren_index]
-        # Split the parameters by Token.COLON
-        temp = []
-        buffer = []
-        delimiters = [] # Used to processValueExpressions of the parameters
-        # Add the open parenthesis
-        delimiters.append(tokens[open_paren_index])
-        for param_i, parameter in enumerate(parameters):
-            if parameter.type == Token.Type.COLON:
-                if len(buffer) == 0:
-                    syntaxError(f"There should be something before this colon", parameter)
-                if param_i == len(parameters) -1:
-                    syntaxError(f"There should be something after this colon, it can't be the last thing. Remove it if there should be nothing after it", parameter)
-                delimiters.append(parameter)
-                temp.append(buffer)
-                buffer = []
-            else:
-                buffer.append(parameter)
-                # If last iteration, append
-                if param_i == len(parameters) -1:
-                    temp.append(buffer)
+        # Get the parameters of this for loop
+        parameters = tokens[open_paren_index : close_paren_index] # The open parenthesis is included for ease of work
+        temp = [] # Where the value expressions of the parameters are going to go
+        param_i = 0
+        while param_i < len(parameters):
+            # Process the parameter
+            value, param_i = processValueExpression(parameters, parameters[param_i], param_i +1, True, False, False, True)
+            # Store the value   
+            temp.append(value)
         parameters = temp
-        # Check how many parameters are there
+        # Check how many parameters have we got
         # At least 1, the end index
         if len(parameters) < 1:
             syntaxError(f"Must specify at least the end index of this for loop", tokens[for_kw_index])
         # And no more than 4, var: begin: end: step
         if len(parameters) > 4:
-            syntaxError(f"You have {len(parameters) -4} too many `:` in your for loop. Check the proper syntax", tokens[for_kw_index])
-        # Put the parameters accordingly
+            syntaxError(f"You have {len(parameters) -4} too many `:` in this for loop. Check the proper syntax", tokens[for_kw_index])
+        # Distribute the parameters depending on how many are there
         has_var = False # We assume there is no var at first
         var, begin, end, step = None, None, None, None
         # If there is only 1 parameter, it's the end index parameter
@@ -876,68 +864,16 @@ def constructAST (tokens: list[Token]) -> Node:
         else:
             assert False, f"Unreachable, checked bounds before"
         assert end != None, f"Unreachable, something is always assigned to end"
-        # Check validity of the parameters
-        # Check that var, if it exists, is a Token.IDENTIFIER
-        if has_var:
-            if len(var) != 1 or var[0].type != Token.Type.IDENTIFIER:
-                syntaxError(f"There should be a single identifier representing the variable of this for loop, first thing after the open parenthesis", tokens[for_kw_index])
-            # Get the var
-            var = var[0]
-            # Remove the open parenthesis because it's taken by the var
-            delimiters.pop(0)
-        # Check begin, end, step
-        temp = [begin, end, step]
-        delimiter_i = 0 # Only incremented if `it` is not None
-        for it_i, it in enumerate(temp.copy()):
-            if it is not None:
-                # Get its appropriate delimited
-                delimiter = delimiters[delimiter_i]
-                # Increment delimiter_i for the next iteration
-                delimiter_i += 1
-                # Process `it`
-                processValueExpression(it, delimiter, 0, True, False, False, True)
-
-
-
-            # colons wont be aligned with temp if only begin and end exist for example, maybe change colons to delimeter or smth and add the ( if there is no var
-        
-        # Get the var if it has one
-        has_var = False
-        i = 0
-        if isNextToken(parameters, Token.Type.COLON, i, None) is None:
-            i = isNextToken(parameters, Token.Type.IDENTIFIER, i, (f'Expected the loop variable of this for loop to be the first thing after opening the parenthesis, or no variable, but not that', tokens[open_paren_index]))
-            var = parameters[i]
-            has_var = True
-            i += 1
-        # Get the begin and end values
-        begin, end = None, None
-        for iteration in range(2): # Do the same thing twice, once for begin and once for end
-            # Look for the colon
-            message = f"Expected a colon `:` after the loop variable to separate the later and the begin index of the loop" if iteration == 0 else f"Expected a colon `:` after the begin index of the loop to separate it from the end index"
-            i = isNextToken(parameters, Token.Type.COLON, i, (message, parameters[i -1]))
-            i += 1
-            # Get the value
-            value, i = processValueExpression(parameters, parameters[i -1], i, True, False, False, True)
-            # Assign it to the appropriate one
-            if iteration == 0:
-                begin = value
-            elif iteration == 1:
-                end = value
-            else:
-                assert False, f"Unreachable, loops only twice"
-        assert begin is not None and end is not None, f"Unreachable, if it didn't find them it would've exited"
-        # Check if a step is defined, otherwise give default value
-        step = None
-        step_colon_index = isNextToken(parameters, Token.Type.COLON, i, None)
-        if step_colon_index is None:
-            step = Token(Token.Type.NUMBER, 1, *tokens[open_paren_index].getSynthesizedInfo())
-        else:
-            step, i = processValueExpression(parameters, parameters[step_colon_index], step_colon_index +1, True, False, False, False)
-        # Nothing should be left in the parameters, or just a bunch of EOLs
-        parameters = parameters[i :] # i here would normally point to after the end of the list, or to a Token.EOL
-        if len(parameters) != 0 and not all([token.type == Token.Type.EOL for token in parameters]):
-            syntaxError(f"This `{parameters[0]}` shouldn't be here", parameters[0])
-        assert step is not None, f"Unreachable, assigned either default or found one"
+        # Check validity of var. If it exists, it should be a Token.IDENTIFIER
+        if has_var and (type(var) != Token or var.type != Token.Type.IDENTIFIER):
+            syntaxError(f"There should be a single identifier representing the variable of this for loop, first thing after the open parenthesis", tokens[for_kw_index])
+        # Give default values to begin and step if they aren't defined
+        temp = [begin, step]
+        for param_i, parameter in enumerate(temp.copy()):
+            if parameter is None:
+                parameter = Token(Token.Type.NUMBER, 1, *tokens[open_paren_index].getSynthesizedInfo())
+                temp[param_i] = parameter
+        begin, step = temp
         i = close_paren_index +1
         
         # Get the body
@@ -945,6 +881,7 @@ def constructAST (tokens: list[Token]) -> Node:
         close_curly_index = findEnclosingToken(tokens, Token.Type.OPEN_CURLY, Token.Type.CLOSE_CURLY, open_curly_index +1, tokens[open_curly_index])
         body = construct(tokens[open_curly_index +1 : close_curly_index], False)
         
+        # Construct the Node.FOR_LOOP
         if has_var:
             return (Node(Node.Type.FOR_LOOP, for_kw=tokens[for_kw_index], has_var=has_var, var=var, begin=begin, end=end, step=step, starter=tokens[open_curly_index], body=body), close_curly_index +1)
         else:
