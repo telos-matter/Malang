@@ -1451,7 +1451,7 @@ def constructProgram (ast: Node) -> Operation:
     
     assert ast.type == Node.Type.ROOT, f"Not Node.ROOT"
     
-    # We unwrap the constant Node.FOR_LOOPs (with Token.NUMBER indexes and step) once before starting
+    # Unwrap the constant Node.FOR_LOOPs (with Token.NUMBER indexes and step) once before starting
     content = ast.components['content']
     i = 0
     while i < len(content):
