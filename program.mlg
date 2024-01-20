@@ -1,5 +1,4 @@
-res = 10
+include str
 
-{
-    ext res = ext_res + 5
-}
+print("Hello")
+print(" ,world!")
