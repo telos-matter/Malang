@@ -106,7 +106,14 @@ def append (str_1, str_2) {
 }
 
 # API limitation: the str you print every time can't be longer than MAX_LEN
-def print (str) {
+def print (str, end) {
     # Keeps appending to the external res, so res shouldn't be used for anything else.
-    ext res = append(ext_res, str)
+    ext res = ext_res @+ str @+ end
+}
+
+def print (str) {
+    # Calls print with new line
+    res = ext_res
+    print(str, '\n')
+    ext res = res 
 }
