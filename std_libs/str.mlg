@@ -106,8 +106,7 @@ def append (str_1, str_2) {
 }
 
 # API limitation: the str you print every time can't be longer than MAX_LEN
-txt = 0
 def print (str) {
-    # Keeps appending to the txt var, so the var txt shouldn't be used for anything else. At the end of your program return the var txt
-    ext txt = append(txt, str)
+    # Keeps appending to the external res, so res shouldn't be used for anything else.
+    ext res = append(ext_res, str)
 }
