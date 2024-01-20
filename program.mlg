@@ -1,3 +1,5 @@
-include str
+res = 10
 
-ret "Hello" @+ " world!"
+{
+    ext res = ext_res + 5
+}
