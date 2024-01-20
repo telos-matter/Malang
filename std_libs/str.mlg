@@ -111,6 +111,7 @@ def print (str, end) {
     ext res = ext_res @+ str @+ end
 }
 
+# API limitation: the str you print every time can't be longer than MAX_LEN
 def print (str) {
     # Calls print with new line
     res = ext_res
