@@ -100,6 +100,7 @@ def charAt (str, i) {
 # TODO add itoa
 
 # API limitation: str_2 can't be longer than MAX_LEN
+@+
 def append (str_1, str_2) {
     ret (str_1 * 2^(8 * len(str_2))) + str_2
 }

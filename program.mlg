@@ -1,1 +1,3 @@
-include assert, math, rand, std, str
+include str
+
+ret "Hello" @+ " world!"
