@@ -987,6 +987,7 @@ def constructProgram (ast: Node) -> Operation:
     cyclic calls'''
     
     RETURN_VAR_NAME = 'res'
+    EXTERNAL_RETURN_VAR_NAME = 'ext_res'
     
     def invalidCode (message: str, token: Token) -> None:
         '''Raises an invalid code exception.'''
@@ -1126,11 +1127,17 @@ def constructProgram (ast: Node) -> Operation:
             
             assert identifier.type == Token.Type.IDENTIFIER, f"Not a Token.IDENTIFIER {identifier}"
             
+            # Look for the variable recursively
             scope = self
             while scope is not None:
                 if identifier in scope.vars:
                     return scope.vars[identifier]
                 scope = scope.parent
+            # If failed, check if the var is the external return variable
+            if identifier.lexeme == EXTERNAL_RETURN_VAR_NAME:
+                if self.parent is not None:
+                    return self.parent.getReturnVarState()
+                invalidCode(f"This is the main scope. There is no scope above to reference its return variable.", identifier)
             invalidCode(f"Unknown variable `{identifier}`", identifier)
         
         def resolveFuncCall (self, func_call: Node, args: list[Number | Operation]) -> Number | Operation:
