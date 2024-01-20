@@ -69,7 +69,7 @@ def len(str) {
     ret -1
 
     #len = 0
-    #for (i: 1: 100) {
+    #for (i: 1: 1000) {
     #    str = str // 2^8
     #    len = if (str @== 0, len, i)
     #}
