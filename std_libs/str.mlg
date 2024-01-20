@@ -95,7 +95,14 @@ def charAt (str, i) {
 
 # TODO add @in (contains)
 
-# TODO add atoi
+
+# API limitation: str can't be longer than MAX_LEN
+def atoi (str) {
+    # From ASCII to Integer
+    for (i: 1: len(str)) {
+        res = (res * 10) + charAt(str, i) - 48
+    }
+}
 
 # TODO add itoa
 
