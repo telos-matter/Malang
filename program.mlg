@@ -1,4 +1,3 @@
 include str
 
-print("Hello, world!")
-print("Automatic new line. Nice!")
+ret atoi("69")
