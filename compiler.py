@@ -1553,11 +1553,11 @@ def compile (args: dict) -> None:
     
     if VERBOSE:
         if INTERPRET:
-            print(f"📠 The interpreted result is {result}")
+            print(f"📠 The interpreted result is `{result}`")
             print(f"🤖 The raw result is {original_result}")
         else:
             print(f"🧾 The result is {result}")
         print(f"🏃🏻 It took {count} operation{['', 's'][0 if count == 1 else 1]} to compute the result")
         print(f"⏱️  This whole process took {duration} seconds")
     else:
-        print(result)
+        print(result, end='')
