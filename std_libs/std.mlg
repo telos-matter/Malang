@@ -56,6 +56,16 @@ def if (bool, a, b) {
     ret (bool * a) - (bool - 1) * b
 }
 
+def elif (bool, a, b) {
+    # Does same thing as if but changed the name to offer more readability
+    ret if (bool, a, b)
+}
+
+def else (value) {
+    # Simply returns the givven value. For sake of readability in nested if else
+    ret value
+}
+
 @&
 def and (bool_1, bool_2) {
     ret bool_1 * bool_2
