@@ -1533,8 +1533,6 @@ def run (args: dict) -> None:
         count = f'around 10^{count}'
     
     original_result = program.result
-    if original_result == int(original_result):
-        original_result = int(original_result)
     
     result = original_result
     if INTERPRET:
