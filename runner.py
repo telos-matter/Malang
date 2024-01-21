@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+# Is it a compiler / interpreter / JIT compiler? I don't know, it's a runner.
+
 if __name__ == '__main__':
-    raise Exception('The compiler should not be run directly')
+    raise Exception('The runner should not be run directly.')
 
 import os
 from core import OP_SET, Operation
@@ -1483,8 +1485,8 @@ def constructProgram (ast: Node) -> Operation:
     return return_value
 
 
-def compile (args: dict) -> None:
-    '''Not only compiles, but rather does what ever is in the args'''
+def run (args: dict) -> None:
+    '''Runs a program from source code. With the specified args'''
     
     import time
     start = time.time()

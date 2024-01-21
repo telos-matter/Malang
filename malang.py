@@ -16,8 +16,8 @@ if __name__ == '__main__':
     
     args = vars(parser.parse_args())
     
-    from compiler import compile
-    compile(args)
+    from runner import run
+    run(args)
 
 else:
     raise Exception(f"This file is expected to be run as the main one")
