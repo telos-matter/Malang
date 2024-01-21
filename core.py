@@ -89,11 +89,18 @@ class Operation ():
             operations_count += b.operations_count
             b_value = b.result
         
+        # Compute the result
+        result = op.function(a_value, b_value)
+        # Check if the result is an int. If so assign it to result. This is to avoid auto casting to float, which loses precision. For example, in the if function: 1.0 * VERY_LARGE_INT_NUMBER would return incorrect results
+        int_result = int(result)
+        if int_result == result:
+            result = int_result
+        
         self.operations_count = operations_count
         self.op = op
         self.a = a
         self.b = b
-        self.result = op.function(a_value, b_value)
+        self.result = result
     
     def __str__(self) -> str:
         return f"({self.a} {self.op} {self.b})"
