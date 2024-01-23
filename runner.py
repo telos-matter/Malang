@@ -1132,6 +1132,8 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
                 else:
                     return False
         
+        # Scopes counter
+        __counter = 0
         # Attribute to assert that only 1 main scope is created.
         __created_main_scope = False
         def __init__(self, parent: Type[Scope] | None, starter: Token) -> None:
@@ -1140,6 +1142,7 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             synthesized from the `starter` which is
             the token that started this scope\n
             The class attributes are as follow:\n
+            - `id`: this scopes' ID\n
             - `main`: is this scope the main scope?\n
             - `parent`: the parent scope if it exists\n
             - `return_var`: the return variable of this scope
@@ -1147,8 +1150,11 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             - `vars`: a `dict` that maps a Token.IDENTIFIER to an Operation / Number\n
             - `funcs`: a `list` of Node.FUNC_DEF'''
             
+            Scope.__counter += 1 # Inc the counter
+            # Create the return var
             return_var = Token.synthesizeIdentifier(RETURN_VAR_NAME, starter)
             
+            self.id = Scope.__counter
             self.main = parent is None
             self.parent = parent
             self.return_var = return_var
@@ -1315,6 +1321,9 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
                 return self.vars[self.return_var]
             except KeyError:
                 assert False, f"Unreachable" # The return var is assigned to this scope at __init__
+        
+        def __str__(self) -> str:
+            return str(self.id)
     
     def processValueElement (value_element: Node | Token, scope: Scope) -> Number | Operation:
             '''Processes a value element and returns an operation
@@ -1458,6 +1467,8 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             # Finally, append the body
             content[i : i] = comps['body']
         
+        # print(f"Content before: {content}") # For debugging purposes
+        
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
@@ -1505,6 +1516,8 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             
             else:
                 assert False, f"Forgot to update instruction nodes handling"
+        
+        # print(f"Content after: {content}") # For debugging purposes
         
         return scope.getReturnVarState()
     
