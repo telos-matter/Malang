@@ -1467,7 +1467,7 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             # Finally, append the body
             content[i : i] = comps['body']
         
-        # print(f"Content before: {content}") # For debugging purposes
+        print(f"Content before: {content}") # DEBUG
         
         if type(scope) == tuple:
             parent_scope, starter = scope
@@ -1517,7 +1517,7 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             else:
                 assert False, f"Forgot to update instruction nodes handling"
         
-        # print(f"Content after: {content}") # For debugging purposes
+        print(f"Content after: {content}") # DEBUG
         
         return scope.getReturnVarState()
     
