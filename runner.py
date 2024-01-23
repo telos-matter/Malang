@@ -1132,6 +1132,8 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
                 else:
                     return False
         
+        # Attribute to assert that only 1 main scope is created.
+        __created_main_scope = False
         def __init__(self, parent: Type[Scope] | None, starter: Token) -> None:
             '''A Scope is a scope boi, what is there to explain.\n
             Every scope has its return variable that is
@@ -1152,6 +1154,11 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             self.return_var = return_var
             self.vars = {return_var: 0}
             self.funcs = []
+            
+            # Assert that only 1 main scope exists
+            if self.main:
+                assert not Scope.__created_main_scope, f"Already created the main Scope!"
+                Scope.__created_main_scope = True
         
         def resolveVar (self, identifier: Token) -> Number | Operation:
             '''Looks for the variable recursively and returns its state\n
@@ -1422,6 +1429,29 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
         - `args`: the command line arguments for this program. Should only be present if it's the main scope 
         '''
         
+        def extractMainFunction (content: list[Node], i: int, args: list[args]) -> None:
+            '''Extracts the main function into the main scope content.\n
+            - `i`: where is the main function in the content?'''
+            assert content[i].type == Node.Type.FUNC_DEF, f"Not a Node.FUNC_DEF. {content[i]}"
+            
+            comps = content[i].components # For ease of reference
+            params = comps['params'] # For ease of reference
+            
+            # First, make sure the provided arguments match the parameters in terms of arity
+            if len(args) != len(params):
+                msg = f"This main function requires {len(params)} parameters, yet (only) {len(args)} arguments were given." if len(params) > len(args) else f"{len(args)} arguments were provided, yet this main function (only) requires {len(params)} parameters."
+                invalidCode(msg, comps['func'])
+            
+            # Then remove the function
+            content.pop(i)
+            # Append the parameters
+            for param, arg in zip(params, args):
+                var_assign = Node.makeVarAssign(False, param, Token.synthesizeNumber(arg, param))
+                content.insert(i, var_assign)
+                i += 1
+            # Finally, append the body
+            content[i : i] = comps['body']
+        
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
@@ -1430,7 +1460,8 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
         # Assert that args only exist with main scope
         assert scope.main == (args is not None), f"Main scope with no args, or args outside main scope. Scope: {scope}. Args: {args}"
         
-        content = content.copy() # Make a copy in which the for loops (if they exist) are going to get unwrapped for this scope
+        if not scope.main:
+            content = content.copy() # Make a copy in which the for loops (if they exist) are going to get unwrapped for this scope
         i = 0
         while i < len(content):
             node = content[i]
@@ -1442,26 +1473,10 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
                 i += 1
             
             elif nodeType == Node.Type.FUNC_DEF:
-                # If it's a main function
+                # If it's a main function, then extract it
                 if scope.main and node.components['func'].lexeme == MAIN_FUNCTION_NAME:
-                    # ,then unwrap
-                    comps = node.components # For ease of reference
-                    params = comps['params'] # For ease of reference
-                    # First, make sure the provided arguments match the parameters in terms of arity
-                    if len(args) != len(params):
-                        msg = f"This main function requires {len(params)} parameters, yet (only) {len(args)} arguments were given." if len(params) > len(args) else f"{len(args)} arguments were provided, yet this main function (only) requires {len(params)} parameters."
-                        invalidCode(msg, comps['func'])
-                    # Then remove the function (In this case it doesn't matter that it's a copy of the content because it's the main scope)
-                    content.pop(i)
-                    # Append the parameters
-                    offset = i
-                    for param, arg in zip(params, args):
-                        var_assign = Node.makeVarAssign(False, param, Token.synthesizeNumber(arg, param))
-                        content.insert(offset, var_assign)
-                        offset += 1
-                    # Append the body
-                    content[offset : offset] = comps['body']
-                    # And done. Don't increment `i` so that the body gets executed
+                    extractMainFunction(content, i, args)
+                    # Don't increment `i` so that the body gets executed
                 
                 # Otherwise just add to function definitions
                 else:
