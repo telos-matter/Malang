@@ -1467,12 +1467,12 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             # Finally, append the body
             content[i : i] = comps['body']
         
-        print(f"Content before: {content}") # DEBUG
-        
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
             scope = Scope(parent_scope, starter)
+        
+        print(f"Content before [SCOPE #{scope.id}]: {content}") # DEBUG
         
         # Assert that args only exist with main scope
         assert scope.main == (args is not None), f"Main scope with no args, or args outside main scope. Scope: {scope}. Args: {args}"
@@ -1517,7 +1517,7 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             else:
                 assert False, f"Forgot to update instruction nodes handling"
         
-        print(f"Content after: {content}") # DEBUG
+        print(f"Content after [SCOPE #{scope.id}]: {content}") # DEBUG
         
         return scope.getReturnVarState()
     
