@@ -149,7 +149,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
         '''Given a files' relative path, it would return its
         content and its absolute path, or None if it was not found.\n
         First tries to find it relative to the `main_file_path`. If
-        it fails looks for it in the libraries dir next to the compiler.
+        it fails looks for it in the libraries dir next to the runner.
         If it failed still and the file path does not end with
         the Malang file extension, it adds it and tries again.'''
         
@@ -165,20 +165,26 @@ def parseSourceFile (file_path: str) -> list[Token]:
         
         FILE_EXT = '.mlg'
         STD_LIBS_DIR = 'std_libs'
-        original_file_path = file_path
+        STD_LIBS_DIR_PATH = os.path.join(os.path.dirname(__file__), STD_LIBS_DIR)
+        
+        file_name = os.path.basename(file_path)
         
         while True:
-            main_file_dir = os.path.dirname(main_file_path) # Check relative to the main file first
-            file_path = os.path.join(main_file_dir, original_file_path)
+            # Get the main file dir
+            main_file_dir = os.path.dirname(main_file_path) 
+            file_path = os.path.join(main_file_dir, file_name)
+            # Check relative to the main file first
             content = safeRead(file_path)
-            if content is None: # Otherwise check in the libs dir
-                file_path = os.path.join(STD_LIBS_DIR, original_file_path)
+            # Otherwise check in the libs dir
+            if content is None:
+                # Get the new file path relative to libs dir
+                file_path = os.path.join(STD_LIBS_DIR_PATH, file_name)
                 content = safeRead(file_path)
             
             if content is not None:
                 return (content, os.path.abspath(file_path))
-            elif not original_file_path.endswith(FILE_EXT):
-                original_file_path += FILE_EXT
+            elif not file_name.endswith(FILE_EXT):
+                file_name += FILE_EXT
             else:
                 return None
     
@@ -413,7 +419,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
         raise Exception(f"❌ FILE DOES NOT EXISTS: `{file_path}`")
     content, abs_path = result
     includes = {abs_path}
-    return parse(content, file_path, True, file_path, includes)
+    return parse(content, file_path, True, abs_path, includes)
 
 
 class Node():
