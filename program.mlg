@@ -1,11 +1,5 @@
+include str
 
-def foo () {
-    for (2) {
-        res = 0
-    }
+def main (n) {
+    print(itoa(n))
 }
-
-# Get's unwrapped before
-
-foo()
-foo()
