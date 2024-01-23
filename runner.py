@@ -1439,8 +1439,14 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
             
             # First, make sure the provided arguments match the parameters in terms of arity
             if len(args) != len(params):
-                msg = f"This main function requires {len(params)} parameters, yet (only) {len(args)} arguments were given." if len(params) > len(args) else f"{len(args)} arguments were provided, yet this main function (only) requires {len(params)} parameters."
-                invalidCode(msg, comps['func'])
+                n_a = len(args)
+                n_p = len(params)
+                message = None
+                if n_a < n_p:
+                    message = f"This main function requires {n_p} parameter{['s', ''][int(n_p == 1)]}, yet{[' only', ''][int(n_a == 0)]} {n_a} argument{['s were', ' was'][int(n_a == 1)]} given."
+                else:
+                    message = f"{n_a} argument{['s were', ' was'][int(n_a == 1)]} given. But this main function{[' only', ''][int(n_p == 0)]} takes {n_p} parameter{['s', ''][int(n_p == 1)]}."
+                invalidCode(message, comps['func'])
             
             # Then remove the function
             content.pop(i)
