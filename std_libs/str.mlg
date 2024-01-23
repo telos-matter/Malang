@@ -1,5 +1,6 @@
 # String library
 
+include std
 
 # API note:
 #   Strings can be of any length, however, the
@@ -17,12 +18,12 @@
 
 # API implementation:
 #   Some of the function that are defined in the standard library are redefined
-#   here (but only inside function, so they are invisibile outside)
+#   here (but only inside function, so they are invisible outside)
 #   in order for the functions to work (because of float limitations in
 #   the abs function I guess? Not 100% sure). And namely they
 #   are redefined to take into consideration that
 #   they will be working with non-negative numbers
-#   only, e.i. postive or null. N.N.: Non-Negative
+#   only, e.i. positive or null. N.N.: Non-Negative
 
 
 def len(str) {
@@ -95,6 +96,11 @@ def charAt (str, i) {
 
 # TODO add @in (contains)
 
+# API limitation: str_2 can't be longer than MAX_LEN
+@+
+def append (str_1, str_2) {
+    ret (str_1 * 2^(8 * len(str_2))) + str_2
+}
 
 # API limitation: str can't be longer than MAX_LEN
 def atoi (str) {
@@ -104,12 +110,29 @@ def atoi (str) {
     }
 }
 
-# TODO add itoa
+# API limitation: absolute value of int can't be larger than 10^1000
+def itoa (int) {
+    # From Integer to ASCII
 
-# API limitation: str_2 can't be longer than MAX_LEN
-@+
-def append (str_1, str_2) {
-    ret (str_1 * 2^(8 * len(str_2))) + str_2
+    def intLen(int) {
+        # Returns how many digits are in the integer. No more than 10^1000
+        len = 0
+        for (i: 1: 1000) {
+            int = int // 10
+            len = if (int @== 0, len, i)
+        }
+        ret len +1
+    }
+
+    str = if(negative(int), '-', 0)
+    int = abs(int)
+    len = intLen(int)
+    for (i: 0: len - 1: -1) {
+        digit = (int // 10^i) @% 10
+        str = str @+ (digit +48)
+    }
+    
+    ret str
 }
 
 # API limitation: the str you print every time can't be longer than MAX_LEN
