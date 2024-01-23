@@ -1361,7 +1361,7 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
                     return scope.resolveFuncCall(value_element, args)
                 
                 elif value_element.type == Node.Type.ANON_FUNC:
-                    return evaluateScope(value_element.components['body'], (scope, value_element.components['starter']))
+                    return evaluateScope(value_element.components['body'], (scope, value_element.components['starter']), None)
             
             assert False, f"Unreachable"
     
