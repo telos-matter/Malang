@@ -90,3 +90,5 @@ So they are really exotic compared to the rest of the lang
 For loops can now have just end index
 
 The doc is not all uptodate and has contradictions
+
+Any functions called main that is encountered in the main scope gets unwrapped (and thus not added to the function definitions) and executed with what ever args were provided to fit the parameters. If missing parameters invalid code

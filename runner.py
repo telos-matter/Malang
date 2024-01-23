@@ -116,6 +116,22 @@ class Token ():
     
     def __repr__(self) -> str:
         return str(self.lexeme)
+    
+    @classmethod
+    def synthesizeNumber (cls, value: Number, synthesizer: Token) -> Token:
+        '''Synthesizes a Token.NUMBER with the given value from the given synthesizer'''
+        assert isinstance(value, Number), f"Not a number, {value}"
+        assert type(synthesizer) == Token, f"Not a Token, {synthesizer}"
+        
+        return Token(Token.Type.NUMBER, value, *synthesizer.getSynthesizedInfo())
+    
+    @classmethod
+    def synthesizeIdentifier (cls, name: str, synthesizer: Token) -> Token:
+        '''Synthesizes a Token.IDENTIFIER with the given name from the given synthesizer'''
+        assert type(name) == str, f"Not a string, {name}"
+        assert type(synthesizer) == Token, f"Not a Token, {synthesizer}"
+        
+        return Token(Token.Type.IDENTIFIER, name, *synthesizer.getSynthesizedInfo())
 
 def parseSourceFile (file_path: str) -> list[Token]:
     '''Takes a source file and parses its content to tokens
@@ -420,8 +436,8 @@ class Node():
             - `content`: a list of the instruction nodes. The compiled files
             - `eoc`: the end of content Token
         - `VAR_ASSIGN`:
-            - `var`: an identifier token representing the variable getting assigned to
             - `ext`: a boolean stating whether this variable is a local or external one
+            - `var`: an identifier token representing the variable getting assigned to
             - `value`: a value element representing the assigned value
         - `OP`:
             - `op`: the op token representing the operation being performed
@@ -493,6 +509,15 @@ class Node():
     
     def __repr__(self) -> str:
         return f"{self.type}\n\t=> {self.components}"
+    
+    @classmethod
+    def makeVarAssign (cls, ext: bool, var: Token, value: Node | Token) -> Node:
+        '''Creates a Node.VAR_ASSIGN'''
+        assert type(ext) == bool, f"Not a bool, {ext}"
+        assert type(var) == Token and var.type == Token.Type.IDENTIFIER, f"Not a Token.IDENTIFIER, {var}"
+        assert isValueElement(value), f"Not a value element, {value}"
+        
+        return Node(Node.Type.VAR_ASSIGN, ext=ext, var=var, value=value)
 
 def isValueElement (element: Token | Node) -> bool:
     '''Checks if the element is a value element\n
@@ -873,7 +898,7 @@ def constructAST (tokens: list[Token]) -> Node:
         temp = [begin, step]
         for param_i, parameter in enumerate(temp.copy()):
             if parameter is None:
-                parameter = Token(Token.Type.NUMBER, 1, *tokens[open_paren_index].getSynthesizedInfo())
+                parameter = Token.synthesizeNumber(1, tokens[open_paren_index])
                 temp[param_i] = parameter
         begin, step = temp
         i = close_paren_index +1
@@ -918,7 +943,7 @@ def constructAST (tokens: list[Token]) -> Node:
                 if len(tokens) <= i or tokens[i].type != Token.Type.ASSIGN_OP:
                     syntaxError(f"Expected an `=` after this variable `{token}` to assign a value to it", tokens[i -1])
                 value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False, False)
-                content.append(Node(Node.Type.VAR_ASSIGN, var=identifier, ext=True, value=value))
+                content.append(Node.makeVarAssign(True, identifier, value))
                 
             elif tokenType == Token.Type.IDENTIFIER: # LOCAL Node.VAR_ASSIGN or Node.FUNC_CALL
                 if len(tokens) <= i +1:
@@ -926,7 +951,7 @@ def constructAST (tokens: list[Token]) -> Node:
                 i += 1
                 if tokens[i].type == Token.Type.ASSIGN_OP: # Node.VAR_ASSIGN
                     value, i = processValueExpression(tokens, tokens[i], i +1, False, True, False, False)
-                    content.append(Node(Node.Type.VAR_ASSIGN, var=token, ext=False, value=value))
+                    content.append(Node.makeVarAssign(False, token, value))
                 
                 elif tokens[i].type == Token.Type.OPEN_PAREN: # Node.FUNC_CALL
                     func_call, i = processFuncCall(tokens, token, i)
@@ -979,17 +1004,20 @@ def constructAST (tokens: list[Token]) -> Node:
     return construct(tokens, True)
 
 
-def constructProgram (ast: Node) -> Operation:
+def constructProgram (ast: Node, args: list[Number]) -> Operation:
     '''Constructs the program by translating
     Nodes into Operations (only a single Operation
     is returned of course)\n
     Also checks for the validity of the code; referencing
     a none existing variable, defining an already existing
     function, recursion and
-    cyclic calls'''
+    cyclic calls.\n
+    - `args`: The args that will be passed to the main function'''
     
     RETURN_VAR_NAME = 'res'
     EXTERNAL_RETURN_VAR_NAME = 'ext_res'
+    
+    MAIN_FUNCTION_NAME = 'main'
     
     def invalidCode (message: str, token: Token) -> None:
         '''Raises an invalid code exception.'''
@@ -1110,14 +1138,16 @@ def constructProgram (ast: Node) -> Operation:
             synthesized from the `starter` which is
             the token that started this scope\n
             The class attributes are as follow:\n
+            - `main`: is this scope the main scope?\n
             - `parent`: the parent scope if it exists\n
             - `return_var`: the return variable of this scope
             that is synthesized from the `starter`\n
             - `vars`: a `dict` that maps a Token.IDENTIFIER to an Operation / Number\n
             - `funcs`: a `list` of Node.FUNC_DEF'''
             
-            return_var = Token(Token.Type.IDENTIFIER, RETURN_VAR_NAME, *starter.getSynthesizedInfo())
+            return_var = Token.synthesizeIdentifier(RETURN_VAR_NAME, starter)
             
+            self.main = parent is None
             self.parent = parent
             self.return_var = return_var
             self.vars = {return_var: 0}
@@ -1155,7 +1185,7 @@ def constructProgram (ast: Node) -> Operation:
             assert len(args) == len(params), f"Unreachable" # The correct fun_def is returned
             for param, arg in zip(params, args):
                 func_scope.setVarState(param, False, arg)
-            return evaluateScope(func_def.components['body'], func_scope)
+            return evaluateScope(func_def.components['body'], func_scope, None)
         
         def setVarState (self, identifier: Token, ext: bool, state: Number | Operation) -> None:
             '''Sets the new state for a variable, and if it doesn't exist add
@@ -1334,8 +1364,7 @@ def constructProgram (ast: Node) -> Operation:
             body = for_loop.components['body']
             
             if has_var:
-                var_value = Token(Token.Type.NUMBER, var_value, *starter.getSynthesizedInfo())
-                var_assign = Node(Node.Type.VAR_ASSIGN, var=var, ext=False, value=var_value)
+                var_assign = Node.makeVarAssign(False, var, Token.synthesizeNumber(var_value, starter))
             
             stride = len(body)
             if has_var:
@@ -1381,7 +1410,7 @@ def constructProgram (ast: Node) -> Operation:
                 end += step
                 iteration += 1
     
-    def evaluateScope (content: list[Node], scope: Scope | tuple[Token , Scope | None]) -> Number | Operation:
+    def evaluateScope (content: list[Node], scope: Scope | tuple[Scope | None, Token], args: list[Number] | None) -> Number | Operation:
         '''Evaluates a scope and returns 
         the return variable value, either a Number
         or an Operation.
@@ -1389,12 +1418,17 @@ def constructProgram (ast: Node) -> Operation:
         to create a new one\n
         If a tuple is given it should contain:\n
             - `parent_scope`: the parent scope or `None` in case of the main scope\n
-            - `starter`: a token that started this scope. To synthesize the return variable\n'''
+            - `starter`: a token that started this scope. To synthesize the return variable\n
+        - `args`: the command line arguments for this program. Should only be present if it's the main scope 
+        '''
         
         if type(scope) == tuple:
             parent_scope, starter = scope
             assert starter != None, f"No starter was given"
             scope = Scope(parent_scope, starter)
+        
+        # Assert that args only exist with main scope
+        assert scope.main == (args is not None), f"Main scope with no args, or args outside main scope. Scope: {scope}. Args: {args}"
         
         content = content.copy() # Make a copy in which the for loops (if they exist) are going to get unwrapped for this scope
         i = 0
@@ -1408,8 +1442,31 @@ def constructProgram (ast: Node) -> Operation:
                 i += 1
             
             elif nodeType == Node.Type.FUNC_DEF:
-                scope.addFunc(node)
-                i += 1
+                # If it's a main function
+                if scope.main and node.components['func'].lexeme == MAIN_FUNCTION_NAME:
+                    # ,then unwrap
+                    comps = node.components # For ease of reference
+                    params = comps['params'] # For ease of reference
+                    # First, make sure the provided arguments match the parameters in terms of arity
+                    if len(args) != len(params):
+                        msg = f"This main function requires {len(params)} parameters, yet (only) {len(args)} arguments were given." if len(params) > len(args) else f"{len(args)} arguments were provided, yet this main function (only) requires {len(params)} parameters."
+                        invalidCode(msg, comps['func'])
+                    # Then remove the function (In this case it doesn't matter that it's a copy of the content because it's the main scope)
+                    content.pop(i)
+                    # Append the parameters
+                    offset = i
+                    for param, arg in zip(params, args):
+                        var_assign = Node.makeVarAssign(False, param, Token.synthesizeNumber(arg, param))
+                        content.insert(offset, var_assign)
+                        offset += 1
+                    # Append the body
+                    content[offset : offset] = comps['body']
+                    # And done. Don't increment `i` so that the body gets executed
+                
+                # Otherwise just add to function definitions
+                else:
+                    scope.addFunc(node)
+                    i += 1
             
             elif nodeType in [Node.Type.FUNC_CALL, Node.Type.ANON_FUNC]:
                 processValueElement(node, scope)
@@ -1423,7 +1480,7 @@ def constructProgram (ast: Node) -> Operation:
             
             elif nodeType == Node.Type.FOR_LOOP:
                 unwrapForLoop(content, i, scope)
-                # Don't increment i because it gets unwrapped at its place
+                # Don't increment `i` because it gets unwrapped at its place
             
             else:
                 assert False, f"Forgot to update instruction nodes handling"
@@ -1478,24 +1535,26 @@ def constructProgram (ast: Node) -> Operation:
             i += 1
     
     # After unwrapping the constant Node.FOR_LOOPs, we evaluate the main scope
-    return_value = evaluateScope(content, (None, ast.components['boc']))
+    return_value = evaluateScope(content, (None, ast.components['boc']), args)
     # If the resulting value is just a Number then make the simple operation of that_number + 0. So that's always an operation
     if isinstance(return_value, Number):
         return_value = Operation(OP_SET.ADD, return_value, 0)
     return return_value
 
 
-def run (args: dict) -> None:
-    '''Runs a program from source code. With the specified args'''
+def run (options: dict, args: list[Number]) -> None:
+    '''Runs a program from source code with the specified options.\n
+    - `args`: The args that will be passed to the main function'''
     
     import time
     start = time.time()
     
-    FILE_PATH = args['file_path']
-    VERBOSE = args['verbose']
-    SHOW = args['show']
-    DEBUG = args['debug']
-    INTERPRET = args['interpret']
+    FILE_PATH = options['file_path']
+    VERBOSE = options['verbose']
+    SHOW = options['show']
+    DEBUG = options['debug']
+    INTERPRET = options['interpret']
+    
     
     if VERBOSE:
         print('👨🏻‍🍳 Parsing..')
@@ -1517,7 +1576,7 @@ def run (args: dict) -> None:
     
     if VERBOSE:
         print('👨🏻‍🍳 Constructing and computing the operation..')
-    program = constructProgram(ast)
+    program = constructProgram(ast, args)
     if VERBOSE:
         print('✅ Constructed and computed the operation')
     if SHOW:

@@ -1,3 +1,4 @@
-include str
 
-ret atoi("69")
+def main (a, b) {
+    ret a + b
+}
