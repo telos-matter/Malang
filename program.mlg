@@ -1,4 +1,11 @@
 
-def main (a, b) {
-    ret a + b
+def foo () {
+    for (2) {
+        res = 0
+    }
 }
+
+# Get's unwrapped before
+
+foo()
+foo()

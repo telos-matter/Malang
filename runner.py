@@ -1521,55 +1521,78 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
         
         return scope.getReturnVarState()
     
-    def isValueElementConstant (value: Token | Node) -> bool:
-        '''Determines if a value element is constant.
-        That is, it can only contain Token.NUMBER, Token.OP
-        or Node.ORDER_PAREN.\n
-        Could extend the definition to include Node.FUNC_CALL
-        with functions that return constant values, but
-        I'm not too fucked to do that.'''
-        assert isValueElement(value), f"Not a value element {value}"
+    def unwrapConstantForLoops (content: list[Node]) -> None:
+        '''Iterates trough all the content and unwraps constant
+        Node.FOR_LOOP once before evaluating the main scope.\n
+        - `content`: the original content, not a copy'''
         
-        if type(value) == Token:
-            if value.type == Token.Type.NUMBER:
-                return True
-            elif value.type == Token.Type.IDENTIFIER:
-                return False
+        def isValueElementConstant (value: Token | Node) -> bool:
+            '''Determines if a value element is constant.
+            That is, it can only contain Token.NUMBER, Token.OP
+            or Node.ORDER_PAREN.\n
+            Could extend the definition to include Node.FUNC_CALL
+            with functions that return constant values, but
+            I'm not too fucked to do that.'''
+            assert isValueElement(value), f"Not a value element {value}"
+            
+            if type(value) == Token:
+                if value.type == Token.Type.NUMBER:
+                    return True
+                elif value.type == Token.Type.IDENTIFIER:
+                    return False
+                else:
+                    assert False, f"Unreachable, checked that it is a Token value element before"
+            elif type(value) == Node:
+                if value.type == Node.Type.OP:
+                    return isValueElementConstant(value.components['l_value']) and isValueElementConstant(value.components['r_value'])
+                elif value.type == Node.Type.ORDER_PAREN:
+                    return isValueElementConstant(value.components['value'])
+                elif value.type in [Node.Type.FUNC_CALL, Node.Type.ANON_FUNC]:
+                    return False
+                else:
+                    assert False, f"Unreachable, checked that it is a Node value element before"
             else:
-                assert False, f"Unreachable, checked that it is a Token value element before"
-        elif type(value) == Node:
-            if value.type == Node.Type.OP:
-                return isValueElementConstant(value.components['l_value']) and isValueElementConstant(value.components['r_value'])
-            elif value.type == Node.Type.ORDER_PAREN:
-                return isValueElementConstant(value.components['value'])
-            elif value.type in [Node.Type.FUNC_CALL, Node.Type.ANON_FUNC]:
-                return False
+                assert False, f"Unreachable, checked that it is a value element before"
+        
+        i = 0
+        while i < len(content):
+            node = content[i]
+            nodeType = node.type # For ease of reference
+            comps = node.components
+            
+            if nodeType == Node.Type.FUNC_DEF:
+                # Unwrap the constant for loops in the body of the function
+                unwrapConstantForLoops(comps['body'])
+                # Continue to the next instruction node
+                i += 1
+            
+            elif nodeType == Node.Type.ANON_FUNC:
+                # Same logic
+                unwrapConstantForLoops(comps['body'])
+                i += 1
+            
+            # Else if it's a Node.FOR_LOOP with constant indexes and step, then actually unwrap it
+            elif (nodeType == Node.Type.FOR_LOOP and
+                    isValueElementConstant(comps['begin']) and
+                    isValueElementConstant(comps['end']) and
+                    isValueElementConstant(comps['step'])):
+                unwrapForLoop(content, i, None) # NOTE: ATM having scope == None works fine because it does not need it. If we change something later on in the called functions then fix this
+                # Don't increment the `i` because it gets unwrapped in its place, and it may have other for loops
+            
+            # The other instruction nodes can't have for loops inside of them
             else:
-                assert False, f"Unreachable, checked that it is a Node value element before"
-        else:
-            assert False, f"Unreachable, checked that it is a value element before"
+                i += 1
     
     assert ast.type == Node.Type.ROOT, f"Not Node.ROOT"
     
-    # Unwrap the constant Node.FOR_LOOPs (with Token.NUMBER indexes and step) once before starting
-    content = ast.components['content']
-    i = 0
-    while i < len(content):
-        node = content[i]
-        comps = node.components
-        # If it's a Node.FOR_LOOP with constant indexes and step
-        if (node.type == Node.Type.FOR_LOOP and
-                isValueElementConstant(comps['begin']) and
-                isValueElementConstant(comps['end']) and
-                isValueElementConstant(comps['step'])):
-            unwrapForLoop(content, i, None) # NOTE: ATM having scope == None works fine because it does not need it. If we change something later on in the called functions then fix this
-            # Don't increment the i because it gets unwrapped in its place
-        
-        else:
-            i += 1
+    content = ast.components['content'] # For ease of reference
     
-    # After unwrapping the constant Node.FOR_LOOPs, we evaluate the main scope
+    # Unwrap constant Node.FOR_LOOPs
+    unwrapConstantForLoops(content)
+    
+    # Evaluate the main scope
     return_value = evaluateScope(content, (None, ast.components['boc']), args)
+    
     # If the resulting value is just a Number then make the simple operation of that_number + 0. So that's always an operation
     if isinstance(return_value, Number):
         return_value = Operation(OP_SET.ADD, return_value, 0)
