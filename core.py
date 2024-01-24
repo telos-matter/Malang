@@ -67,7 +67,8 @@ class Operation ():
     the `result` attribute*. This is to avoid
     overflowing the stack with function
     calls (that is, in case they were created and
-    then evaluated recursively).
+    then evaluated recursively), and also
+    to provide sequential execution of code.
         - Each operation keeps track of how many sub operations
     it has plus it self with the `operations_count` attribute. Know
     that this number refers to how many operation there are mathematically,
