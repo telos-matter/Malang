@@ -373,9 +373,6 @@ def parseSourceFile (file_path: str) -> list[Token]:
                 
                 elif char == '"':
                     string, j = readString(line, i, file_path, line_index)
-                    if len(string) == 0:
-                        temp_token = Token(None, string, line, j -i, file_path, line_index, i)
-                        parsingError(f"Strings can't be empty", temp_token)
                     value = 0
                     for c in string:
                         value *= 2**8
