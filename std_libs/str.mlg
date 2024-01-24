@@ -68,7 +68,7 @@ def len(str) {
     # The len function
     for (i: 0: 1000) { # for (i: 0: MAX_LEN). Calls to this function won't give results larger than MAX_LEN. Don't make MAX_LEN a variable so that the loops get expanded once.
         
-        for ($! (str @== 0): 0) { # Real if statement. If you feel that that's cheating, the commented version of this code below does the same. But this is faster
+        for (_: $! (str @== 0): 0) { # Real if statement. If you feel that that's cheating, the commented version of this code below does the same. But this is faster
             ret i
         }
         
@@ -133,6 +133,8 @@ def charAt (str, i) {
 # TODO add substring
 
 # TODO add index
+
+# TODO add reverse
 
 # TODO add @in (contains)
 
