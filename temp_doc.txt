@@ -95,3 +95,5 @@ Any functions called main that is encountered in the main scope gets unwrapped (
 
 
 Leading \0 are neglected
+
+Assertions / Exceptions are thrown by dividing on 0
