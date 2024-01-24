@@ -3,7 +3,7 @@ include std, str
 # FizzBuzz example
 
 def main (n) {
-    for (i: 1: n) {
+    for (i: n) {
         # If it's devisable by 5 put Fizz, otherwise empty string
         s = if(i @/? 5, "Fizz", "")
         # If it's devisable by 3 append Buzz, otherwise empty string
