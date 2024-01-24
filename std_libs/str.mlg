@@ -39,7 +39,11 @@ def same (str_1, str_2) {
     # Returns TRUE if `str_1` is the same as `str_2`, FALSE otherwise.    
 
     # Defining needed functions
-    def NNNull (x) {
+    def abs (x) {
+        ret (x^2)^0.5
+    }
+
+    def null (x) {
         def NNMod (a, b) {
             ret a - ((a // b) * b)
         }
@@ -49,15 +53,16 @@ def same (str_1, str_2) {
         }
         
         def function (x) {
-            ret x / (x +10)
+            abs_x = abs(x)
+            ret abs_x / (abs_x +10)
         }
         
         ret NNFloor(1 -function(x))
     }
 
     @==
-    def NNEqualNumber (a, b) {
-        ret NNNull(a - b)
+    def equalNumber (a, b) {
+        ret null(a - b)
     }
 
     ret str_1 @== str_2 # Two strings are the same if they are the same number
