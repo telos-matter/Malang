@@ -84,17 +84,26 @@ def len(str) {
     # _ = 0/(str @== 0)
 }
 
-# API limitation: str can't be longer than MAX_LEN
-def charAt (str, i) {
+def charAt (str, len, i) {
+    # Returns the char at `i` in the string `str` with length `len`.
+    # String indexing is 1-based
+
+    # Needed function
     @%
-    def NNMod (a, b) { # Remove this function and include the std library if you want to see why I redefined them
+    def NNMod (a, b) {
         ret a - ((a // b) * b)
     }
 
-    for (len(str) -i) {
-        str = str // 256
-    }
+    str = str // (256 ^ (len - i))
     ret str @% 256
+}
+
+# API limitation: str can't be longer than MAX_LEN
+def charAt (str, i) {
+    # Returns the char at `i` in the string `str`.
+    # String indexing is 1-based
+
+    ret charAt(str, len(str), i)
 }
 
 # TODO add substring
