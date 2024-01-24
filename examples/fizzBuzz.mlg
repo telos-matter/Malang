@@ -9,7 +9,7 @@ def main (n) {
         # If it's devisable by 3 append Buzz, otherwise empty string
         s = s @+ if(i @/? 3, "Buzz", "")
         # If the string is empty, put the number as a string. Otherwise keep the string as is
-        s = if(len(s) @== 0, itoa(i), s)
+        s = if(empty(s), itoa(i), s)
         
         # Print the string
         print(s)
