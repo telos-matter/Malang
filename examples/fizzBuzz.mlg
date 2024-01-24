@@ -1,0 +1,17 @@
+include std, str
+
+# FizzBuzz example
+
+def main (n) {
+    for (i: 1: n) {
+        # If it's devisable by 5 put Fizz, otherwise empty string
+        s = if(i @/? 5, "Fizz", 0)
+        # If it's devisable by 3 append Buzz, otherwise empty string
+        s = s @+ if(i @/? 3, "Buzz", 0)
+        # If the string is empty, put the number as a string. Otherwise keep the string as is
+        s = if(len(s) @== 0, itoa(i), s)
+        
+        # Print the string
+        print(s)
+    }
+}
