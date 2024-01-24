@@ -23,6 +23,7 @@ include std
 #   only '\0', and the value 0 are synonymous
 #
 #   - Also strings' index is 1-based. Why? Because I wanted to. What are you going to do about it, cry to ur mom? (But seriously tho, because it is easier. Also reinforces the fact that loops are inclusive, and also there is no lists so it's actually better that way I'd say)
+#   - Can only have ascii chars
 
 # API implementation:
 #   Some of the function that are defined in the standard library are redefined
@@ -35,8 +36,7 @@ include std
 
 
 def len(str) {
-    # Returns the length of a string.
-    # Returns -1 if the len is greater than MAX_LEN
+    # Returns the length of a string. The string can't be longer than MAX_LEN == 1000
 
     # Defining needed functions
     def NNNull (x) {
@@ -66,20 +66,22 @@ def len(str) {
     }
 
     # The len function
-    for (i: 0: 1000) { # for (i: 0: MAX_LEN). Calls to this function won't give results larger than that. Don't make it a variable so that the loops get expanded once
+    for (i: 0: 1000) { # for (i: 0: MAX_LEN). Calls to this function won't give results larger than MAX_LEN. Don't make MAX_LEN a variable so that the loops get expanded once.
         
-        for ($! (str @== 0): 0) { # Real if statement. If you feel that that's cheating, the commented code version below works too. But does not return -1 for values greater than MAX_LEN
+        for ($! (str @== 0): 0) { # Real if statement. If you feel that that's cheating, the commented version of this code below does the same. But this is faster
             ret i
         }
         
         str = str // 256 # x // 256 is x // 2^8 is x >> 8
     }
-    ret -1
+    # Raise an exception because the length of the string is greater than MAX_LEN
+    ret 0/0 
 
     # for (i: 1: 1000) {
     #     res = if (str @== 0, res, i)
     #     str = str // 2^8
     # }
+    # _ = 0/(str @== 0)
 }
 
 # API limitation: str can't be longer than MAX_LEN
