@@ -1,3 +1,4 @@
+# Factorial example
 
 def main (n) {
     res = 1
