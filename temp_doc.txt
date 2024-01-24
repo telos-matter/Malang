@@ -99,3 +99,5 @@ Leading \0 are neglected
 Assertions / Exceptions are thrown by dividing on 0
 
 Nah for loops are end index , var then start, cuz if I specify start and don't want var, then might just as well change the end and that ll be enough
+
+All functions so far (except len) expect u to give proper values. Like atoi won't work properly with empty string or charAt and so on. Functions is std too
