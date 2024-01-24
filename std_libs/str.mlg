@@ -65,7 +65,6 @@ def len(str) {
         ret NNNull(a - b)
     }
 
-    # The len function
     for (i: 0: 1000) { # for (i: 0: MAX_LEN). Calls to this function won't give results larger than MAX_LEN. Don't make MAX_LEN a variable so that the loops get expanded once.
         
         for (_: $! (str @== 0): 0) { # Real if statement. If you feel that that's cheating, the commented version of this code below does the same. But this is faster
@@ -82,6 +81,34 @@ def len(str) {
     #     str = str // 2^8
     # }
     # _ = 0/(str @== 0)
+}
+
+def same (str_1, str_2) {
+    # Returns TRUE if `str_1` is the same as `str_2`, FALSE otherwise.    
+
+    # Defining needed functions
+    def NNNull (x) {
+        def NNMod (a, b) {
+            ret a - ((a // b) * b)
+        }
+        
+        def NNFloor (x) {
+            ret x - NNMod(x, 1)
+        }
+        
+        def function (x) {
+            ret x / (x +10)
+        }
+        
+        ret NNFloor(1 -function(x))
+    }
+
+    @==
+    def NNEqualNumber (a, b) {
+        ret NNNull(a - b)
+    }
+
+    ret str_1 @== str_2 # Two strings are the same if they are the same number
 }
 
 def empty (str) {
