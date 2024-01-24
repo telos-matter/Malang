@@ -97,3 +97,5 @@ Any functions called main that is encountered in the main scope gets unwrapped (
 Leading \0 are neglected
 
 Assertions / Exceptions are thrown by dividing on 0
+
+Nah for loops are end index , var then start, cuz if I specify start and don't want var, then might just as well change the end and that ll be enough
