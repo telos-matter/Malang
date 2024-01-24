@@ -35,54 +35,6 @@ include std
 #   only, e.i. positive or null. N.N.: Non-Negative
 
 
-def len(str) {
-    # Returns the length of a string. The string can't be longer than MAX_LEN == 1000
-
-    # Defining needed functions
-    def NNNull (x) {
-        def NNMod (a, b) {
-            ret a - ((a // b) * b)
-        }
-        
-        def NNFloor (x) {
-            ret x - NNMod(x, 1)
-        }
-        
-        def function (x) {
-            ret x / (x +10)
-        }
-        
-        ret NNFloor(1 -function(x))
-    }
-
-    $!
-    def not (bool) {
-        ret (bool - 1) / -1
-    }
-
-    @==
-    def NNEqualNumber (a, b) {
-        ret NNNull(a - b)
-    }
-
-    for (i: 0: 1000) { # for (i: 0: MAX_LEN). Calls to this function won't give results larger than MAX_LEN. Don't make MAX_LEN a variable so that the loops get expanded once.
-        
-        for (_: $! (str @== 0): 0) { # Real if statement. If you feel that that's cheating, the commented version of this code below does the same. But this is faster
-            ret i
-        }
-        
-        str = str // 256 # x // 256 is x // 2^8 is x >> 8
-    }
-    # Raise an exception because the length of the string is greater than MAX_LEN
-    ret 0/0 
-
-    # for (i: 1: 1000) {
-    #     res = if (str @== 0, res, i)
-    #     str = str // 2^8
-    # }
-    # _ = 0/(str @== 0)
-}
-
 def same (str_1, str_2) {
     # Returns TRUE if `str_1` is the same as `str_2`, FALSE otherwise.    
 
@@ -114,25 +66,34 @@ def same (str_1, str_2) {
 def empty (str) {
     # Returns TRUE if `str` is empty (length == 0), FALSE otherwise.
 
+    ret same(str, "")
+}
+
+def len(str) {
+    # Returns the length of a string. The string can't be longer than MAX_LEN == 1000
+
     # Needed function
-    $==0?
-    def NNNull (x) {
-        def NNMod (a, b) {
-            ret a - ((a // b) * b)
-        }
-        
-        def NNFloor (x) {
-            ret x - NNMod(x, 1)
-        }
-        
-        def function (x) {
-            ret x / (x +10)
-        }
-        
-        ret NNFloor(1 -function(x))
+    $!
+    def not (bool) {
+        ret (bool - 1) / -1
     }
 
-    ret $==0? str # An empty string is 0
+    for (i: 0: 1000) { # for (i: 0: MAX_LEN). Calls to this function won't give results larger than MAX_LEN. Don't make MAX_LEN a variable so that the loops get expanded once.
+        
+        for (_: $! empty(str): 0) { # Real if statement. If you feel that that's cheating, the commented version of this code below does the same. But this is faster
+            ret i
+        }
+        
+        str = str // 256 # x // 256 is x // 2^8 is x >> 8
+    }
+    # Raise an exception because the length of the string is greater than MAX_LEN
+    ret 0/0 
+
+    # for (i: 1: 1000) {
+    #     res = if (empty(str), res, i)
+    #     str = str // 2^8
+    # }
+    # _ = 0/empty(str)
 }
 
 def append (str_1, str_2, str_2_len) {
