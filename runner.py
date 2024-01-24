@@ -880,19 +880,20 @@ def constructAST (tokens: list[Token]) -> Node:
         # If there is only 1 parameter, it's the end index parameter
         if len(parameters) == 1:
             end = parameters[0]
-        # If there are 2, it's the begin and end
-        elif len(parameters) == 2:
-            begin, end = parameters
-        # If there are 3, it's var, begin and end
-        elif len(parameters) == 3:
-            has_var = True
-            var, begin, end = parameters
-        # Otherwise, if 4, it's var, begin, end, and step
-        elif len(parameters) == 4:
-            has_var = True
-            var, begin, end, step = parameters
+        # If not, then all other configurations have var
         else:
-            assert False, f"Unreachable, checked bounds before"
+            has_var = True
+            # If there are 2, it's the var and end
+            if len(parameters) == 2:
+                var, end = parameters
+            # If there are 3, it's var, begin and end
+            elif len(parameters) == 3:
+                var, begin, end = parameters
+            # Otherwise, if 4, it's var, begin, end, and step
+            elif len(parameters) == 4:
+                var, begin, end, step = parameters
+            else:
+                assert False, f"Unreachable, checked bounds before"
         assert end != None, f"Unreachable, something is always assigned to end"
         # Check validity of var. If it exists, it should be a Token.IDENTIFIER
         if has_var and (type(var) != Token or var.type != Token.Type.IDENTIFIER):
