@@ -191,16 +191,14 @@ def itoa (int) {
     ret str
 }
 
-# API limitation: the str you print every time can't be longer than MAX_LEN
+# API limitation: the `str` you print with each call can't be longer than MAX_LEN
 def print (str, end) {
     # Keeps appending to the external res, so res shouldn't be used for anything else.
     ext res = ext_res @+ str @+ end
 }
 
-# API limitation: the str you print every time can't be longer than MAX_LEN
+# API limitation: the `str` you print with each call can't be longer than MAX_LEN
 def print (str) {
-    # Calls print with new line
-    res = ext_res
-    print(str, '\n')
-    ext res = res 
+    # Does same thing as print, but with end being a new line
+    ext res = append(ext_res @+ str, '\n', 1)
 }
