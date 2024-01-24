@@ -145,10 +145,19 @@ def charAt (str, i) {
 
 def atoi (str, len) {
     # Parses the ASCII string `str` with length `len` to an integer
-    for (i: len) {
+
+    # Needed function
+    def if (bool, a, b) {
+        ret (bool * a) - (bool - 1) * b
+    }
+
+    negative = same('-', charAt(str, 1, len))
+    start = if(negative, 2, 1)
+    for (i: start: len) {
         # Shift to the left and subtract the ASCII code for 0
         res = (res * 10) + charAt(str, i, len) - '0'
     }
+    ret if(negative, -1 * res, res)
 }
 
 # API limitation: length of `str` can't be longer than MAX_LEN
