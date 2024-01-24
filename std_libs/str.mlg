@@ -153,8 +153,8 @@ def charAt (str, i) {
 def atoi (str, len) {
     # Parses the ASCII string `str` with length `len` to an integer
     for (i: len) {
-        res = res * 10 # Shift to the left
-        res = res + charAt(str, i, len) - 48 # ASCII code for 0 is 48
+        # Shift to the left and subtract the ASCII code for 0
+        res = (res * 10) + charAt(str, i, len) - '0'
     }
 }
 
