@@ -72,7 +72,7 @@ def len(str) {
             ret i
         }
         
-        str = str // 256 # // 256 == // 2^8 == >> 8
+        str = str // 256 # x // 256 is x // 2^8 is x >> 8
     }
     ret -1
 
