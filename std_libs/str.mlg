@@ -98,7 +98,7 @@ def charAt (str, len, i) {
     ret str @% 256
 }
 
-# API limitation: str can't be longer than MAX_LEN
+# API limitation: `str` can't be longer than MAX_LEN
 def charAt (str, i) {
     # Returns the char at `i` in the string `str`.
     # String indexing is 1-based
@@ -112,11 +112,16 @@ def charAt (str, i) {
 
 # TODO add @in (contains)
 
-# API limitation: length of str_2 can't be longer than MAX_LEN
+def append (str_1, str_2, str_2_len) {
+    # Appends `str_2` with length `str_2_len` at the end of `str_1`
+    ret (str_1 * 2^(8 * str_2_len)) + str_2
+}
+
+# API limitation: length of `str_2` can't be longer than MAX_LEN
 @+
 def append (str_1, str_2) {
-    # Appends str_2 at the end of str_1
-    ret (str_1 * 2^(8 * len(str_2))) + str_2
+    # Appends `str_2` at the end of `str_1`
+    ret append(str_1, str_2, len(str_2))
 }
 
 # API limitation: str can't be longer than MAX_LEN
