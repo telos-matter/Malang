@@ -84,6 +84,30 @@ def len(str) {
     # _ = 0/(str @== 0)
 }
 
+def empty (str) {
+    # Returns TRUE if `str` is empty (length == 0), FALSE otherwise.
+
+    # Needed function
+    $==0?
+    def NNNull (x) {
+        def NNMod (a, b) {
+            ret a - ((a // b) * b)
+        }
+        
+        def NNFloor (x) {
+            ret x - NNMod(x, 1)
+        }
+        
+        def function (x) {
+            ret x / (x +10)
+        }
+        
+        ret NNFloor(1 -function(x))
+    }
+
+    ret $==0? str # An empty string is 0
+}
+
 def charAt (str, len, i) {
     # Returns the char at `i` in the string `str` with length `len`.
     # String indexing is 1-based
