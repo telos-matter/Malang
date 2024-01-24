@@ -143,19 +143,24 @@ def append (str_1, str_2, str_2_len) {
     ret (str_1 * 2^(8 * str_2_len)) + str_2
 }
 
-# API limitation: length of `str_2` can't be longer than MAX_LEN
+# API limitation: `str_2` can't be longer than MAX_LEN
 @+
 def append (str_1, str_2) {
     # Appends `str_2` at the end of `str_1`
     ret append(str_1, str_2, len(str_2))
 }
 
-# API limitation: str can't be longer than MAX_LEN
-def atoi (str) {
-    # From ASCII to Integer
-    for (i: 1: len(str)) {
-        res = (res * 10) + charAt(str, i) - 48
+def atoi (str, len) {
+    # Parses the ASCII string `str` with length `len` to an integer
+    for (i: len) {
+        res = (res * 10) + charAt(str, i, len) - 48 # ASCII code for 0 is 48
     }
+}
+
+# API limitation: length of `str` can't be longer than MAX_LEN
+def atoi (str) {
+    # Parses the ASCII string `str` to an integer
+    ret atoi(str, len(str))
 }
 
 # API limitation: absolute value of int can't be larger than 10^1000
