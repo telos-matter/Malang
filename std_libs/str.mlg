@@ -108,7 +108,19 @@ def empty (str) {
     ret $==0? str # An empty string is 0
 }
 
-def charAt (str, len, i) {
+def append (str_1, str_2, str_2_len) {
+    # Appends `str_2` with length `str_2_len` at the end of `str_1`
+    ret (str_1 * 2^(8 * str_2_len)) + str_2
+}
+
+# API limitation: `str_2` can't be longer than MAX_LEN
+@+
+def append (str_1, str_2) {
+    # Appends `str_2` at the end of `str_1`
+    ret append(str_1, str_2, len(str_2))
+}
+
+def charAt (str, i, len) {
     # Returns the char at `i` in the string `str` with length `len`.
     # String indexing is 1-based
 
@@ -127,7 +139,7 @@ def charAt (str, i) {
     # Returns the char at `i` in the string `str`.
     # String indexing is 1-based
 
-    ret charAt(str, len(str), i)
+    ret charAt(str, i, len(str))
 }
 
 # TODO add substring
@@ -138,22 +150,11 @@ def charAt (str, i) {
 
 # TODO add @in (contains)
 
-def append (str_1, str_2, str_2_len) {
-    # Appends `str_2` with length `str_2_len` at the end of `str_1`
-    ret (str_1 * 2^(8 * str_2_len)) + str_2
-}
-
-# API limitation: `str_2` can't be longer than MAX_LEN
-@+
-def append (str_1, str_2) {
-    # Appends `str_2` at the end of `str_1`
-    ret append(str_1, str_2, len(str_2))
-}
-
 def atoi (str, len) {
     # Parses the ASCII string `str` with length `len` to an integer
     for (i: len) {
-        res = (res * 10) + charAt(str, i, len) - 48 # ASCII code for 0 is 48
+        res = res * 10 # Shift to the left
+        res = res + charAt(str, i, len) - 48 # ASCII code for 0 is 48
     }
 }
 
