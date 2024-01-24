@@ -1,5 +1,9 @@
-include str
 
-num = -123456789123456781234567891234567891234567891234567891234567891234567899
+# No longer works
+# for (1: 10) {
+#     res = i
+# }
 
-print(itoa(num))
+for (i: 10) {
+    res = i
+}
