@@ -25,7 +25,10 @@ def null (x) {
     }
     
     def function (x) {
-        ret abs(x) / (abs(x) +10) # 10 for "damping", could do with any positive value
+        # This function only equals to 0 when x is 0.
+        # Domain of this function is (-inf, +inf) -> [0, 1).
+        abs_x = abs(x)
+        ret abs_x / (abs_x +10) # 10 for "damping", could do with any positive value
     }
     
     ret NNFloor(1 -function(x))
