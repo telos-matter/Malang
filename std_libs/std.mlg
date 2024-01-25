@@ -27,7 +27,7 @@ def null (x) {
     def function (x) {
         # This function only equals to 0 when x is 0.
         # Domain of this function is (-inf, +inf) -> [0, 1).
-        abs_x = abs(x)
+        abs_x = (x^2)^0.5 # Abs function
         ret abs_x / (abs_x +10) # 10 for "damping", could do with any positive value
     }
     
