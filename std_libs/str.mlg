@@ -1,6 +1,5 @@
 # String library
 
-include std
 
 # API note:
 #   - Strings can be of any length, however, the
@@ -166,29 +165,65 @@ def atoi (str) {
     ret atoi(str, len(str))
 }
 
-# API limitation: absolute value of int can't be larger than 10^1000
-def itoa (int) {
-    # From Integer to ASCII
+def itoa (int, len) {
+    # Parses the integer `int` with `len` many digits to an ASCII string
 
-    def intLen(int) {
-        # Returns how many digits are in the integer. No more than 10^1000
-        len = 0
-        for (i: 1: 1000) {
-            int = int // 10
-            len = if (int @== 0, len, i)
+    # Needed functions
+    def negative (int) {
+        # Dirty hack to determine if the number is negative. I don't want to include the std lib, and if I don't, I have to rewrite all the functions up to negative instead of this simple one
+        for (_: 0: int) {
+            ret 0
         }
-        ret len +1
+        ret 1
     }
 
-    str = if(negative(int), '-', 0)
+    def if (bool, a, b) {
+        ret (bool * a) - (bool - 1) * b
+    }
+
+    def abs (x) {
+        ret (x^2)^0.5
+    }
+
+    @%
+    def NNMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+
+    res = if(negative(int), "-", "")
     int = abs(int)
-    len = intLen(int)
     for (i: 0: len - 1: -1) {
         digit = (int // 10^i) @% 10
-        str = str @+ (digit +48)
+        res = append(res, digit +48, 1)
     }
-    
-    ret str
+}
+
+# API limitation: absolute value of `int` can't be larger than 10^1000
+def itoa (int) {
+    # Parses the integer `int` to an ASCII string
+
+    # Needed functions
+    $!
+    def not (bool) {
+        ret (bool - 1) / -1
+    }
+
+    def intLen(int) {
+        # Returns how many digits are in the integer. Absolute value of `int` can't be larger than 10^1000
+        
+        int = ((int^2)^0.5) # Abs value
+        for (i: 1000) {
+            int = int // 10
+            
+            for (_: $! empty(int): 0) { # Real if statement. The version before didn't use this if you think that that's cheating, but it's slower
+                ret i
+            }
+        }
+        # If we got here then `int` is larger than 10^1000
+        ret 0/0
+    }
+
+    ret itoa(int, intLen(int))
 }
 
 # API limitation: the `str` you print with each call can't be longer than MAX_LEN
