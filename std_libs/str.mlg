@@ -37,11 +37,7 @@
 def same (str_1, str_2) {
     # Returns TRUE if `str_1` is the same as `str_2`, FALSE otherwise.    
 
-    # Defining needed functions
-    def abs (x) {
-        ret (x^2)^0.5
-    }
-
+    # Needed functions
     def null (x) {
         def NNMod (a, b) {
             ret a - ((a // b) * b)
@@ -52,7 +48,7 @@ def same (str_1, str_2) {
         }
         
         def function (x) {
-            abs_x = abs(x)
+            abs_x = (x^2)^0.5 # Abs function
             ret abs_x / (abs_x +10)
         }
         
@@ -212,7 +208,7 @@ def itoa (int) {
         for (i: 1000) {
             int = int // 10
             
-            for (_: $! empty(int): 0) { # Real if statement. The version before didn't use this if you think that that's cheating, but it's slower
+            for (_: $! same(int, 0): 0) { # Real if statement. The version before didn't use this if you think that that's cheating, but it's slower
                 ret i
             }
         }
