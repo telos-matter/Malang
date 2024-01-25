@@ -24,7 +24,6 @@ def log(x, n) {
 }
 
 def sin(x) {
-    # Is there not a way in which i can figure out the ratio of the sides of the triangle just from the angles? Answer should be no because someone should have already thought about that and that would have been the standard implementation of cos and sin because it would give 100% accuracy for very LITTLE computing power. But let's see why that won't work
     # TODO impl
     ret assert(FALSE)
 }
@@ -53,7 +52,7 @@ def atan(x) {
     ret assert(FALSE)
 }
 
-def degress(rad) {
+def degrees(rad) {
     ret rad * 180 / PI
 }
 

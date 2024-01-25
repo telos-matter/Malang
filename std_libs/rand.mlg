@@ -20,13 +20,13 @@ def next () {
 }
 
 def rand () {
-    # Returns a random number between [0, 1) (0 included, 1 exluded)
+    # Returns a random number between [0, 1) (0 included, 1 excluded)
     
     ret next() / (RAND_MAX +1)
 }
 
 def rand(a, b) {
-    # Returns a random number betweem [a, b) (a included, b exluded)
+    # Returns a random number between [a, b) (a included, b excluded)
     
     ret rand()*(b - a) +a
 }
