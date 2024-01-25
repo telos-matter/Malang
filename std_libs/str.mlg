@@ -181,17 +181,13 @@ def itoa (int, len) {
         ret (bool * a) - (bool - 1) * b
     }
 
-    def abs (x) {
-        ret (x^2)^0.5
-    }
-
     @%
     def NNMod (a, b) {
         ret a - ((a // b) * b)
     }
 
     res = if(negative(int), "-", "")
-    int = abs(int)
+    int = (int^2)^0.5 # Abs function
     for (i: 0: len - 1: -1) {
         digit = (int // 10^i) @% 10
         res = append(res, digit +48, 1)
@@ -209,9 +205,10 @@ def itoa (int) {
     }
 
     def intLen(int) {
-        # Returns how many digits are in the integer. Absolute value of `int` can't be larger than 10^1000
+        # Returns how many digits are in the integer.
+        # Absolute value of `int` can't be larger than 10^1000
         
-        int = ((int^2)^0.5) # Abs value
+        int = (int^2)^0.5 # Abs value
         for (i: 1000) {
             int = int // 10
             
