@@ -5,10 +5,11 @@ include std # Requires the std library
 
 include assert
 
-PI = 3.141592653589793
-NICE = 69
-E = 2.718281828459045
-LN_2 = 0.6931471805599453
+PI     = 3.141592653589793
+TWO_PI = 6.283185307179586
+NICE   = 69
+E      = 2.718281828459045
+LN_2   = 0.6931471805599453
 
 def abs (x) {
     # Returns the absolute value of x
@@ -114,8 +115,17 @@ def sin(x) {
 }
 
 def cos(x) {
-    # TODO impl
-    ret assert(FALSE)
+    # Returns the cosine of x
+    # Uses the Taylor series
+
+    x = abs(x)
+    x = x @% (TWO_PI)
+    x = if(x @> PI,
+        x - TWO_PI,
+        x)
+    
+    # Taylor series up to the 10th term
+    ret 1 - x^2/2 + x^4/24 - x^6/720 + x^8/40320 - x^10/3628800 + x^12/479001600 - x^14/87178291200 + x^16/20922789888000 - x^18/6402373705728000 + x^20/2432902008176640000
 }
 
 def tan(x) {
