@@ -252,6 +252,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
             message = "Unterminated string literal" if starter == '"' else "Unterminated character literal"
             parsingError(message, temp_token)
         
+        COMMENT_CHAR  = '#'
         NUMBER_PERIOD = '.' # 3.14
         NUMBER_SEP    = '_' # 100_00
         INCLUDE_SEP   = ',' # include std, str
@@ -322,8 +323,12 @@ def parseSourceFile (file_path: str) -> list[Token]:
                         tokenType = Token.Type.FOR_KW
                     
                     elif identifier == 'include':
+                        # Get the include line
+                        include_line = line[j +1:]
+                        # Remove everything after the comment if there is one
+                        include_line = include_line.split(COMMENT_CHAR)[0]
                         # Split by INCLUDE_SEP and strip
-                        included_files_paths = [path.strip() for path in line[j +1:].split(INCLUDE_SEP)]
+                        included_files_paths = [path.strip() for path in include_line.split(INCLUDE_SEP)]
                         for included_file_path in included_files_paths:
                             result = resolveFile(included_file_path, main_file_path)
                             if result is None:
@@ -392,7 +397,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                     tokens.append(Token(Token.Type.COLON, char, line, len(char), file_path, line_index, i))
                     i += 1
                 
-                elif char == '#':
+                elif char == COMMENT_CHAR:
                     # A line comment, go to the next line
                     break
                 
