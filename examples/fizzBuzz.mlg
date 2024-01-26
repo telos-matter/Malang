@@ -1,4 +1,4 @@
-include std, str
+include std, math, str
 
 # FizzBuzz example
 
