@@ -148,9 +148,10 @@ class Operation ():
         #   precision.
         #   For example: 1.0 * x, would not return x
         #   if x is a VERY LARGE int number
-        int_result = int(result)
-        if int_result == result:
-            result = int_result
+        if type(result) is not int:
+            int_result = int(result)
+            if int_result == result:
+                result = int_result
         
         # Finally, store the values
         self.operations_count = operations_count
