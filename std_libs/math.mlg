@@ -94,16 +94,6 @@ def divisible (a, b) {
     ret null(a @% b)
 }
 
-def even (x) {
-    # Returns TRUE if x is even, FALSE otherwise
-    ret x @/? 2
-}
-
-def odd (x) {
-    # Returns TRUE if x is odd, FALSE otherwise
-    ret $! even(x)
-}
-
 def exp(x) {
     # Returns the exponential of x
     ret E ^ x
