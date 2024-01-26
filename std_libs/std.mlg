@@ -1,20 +1,12 @@
 # The standard library.
-# Has the basic functions to get you going, as well as some necessary basic math function.
+# Has the basic functions to get you going..
 
 FALSE = 0
 TRUE = 1
 
-def sqrt (x) {
-    ret x ^ 0.5
-}
-
-def abs (x) {
-    ret sqrt(x ^ 2)
-}
-
 def null (x) {
-    # Checks if a number is null, a.k.a equal to zero
-    # Also the backbone of this whole thing
+    # Checks if a number is null, i.e. equal to zero
+    # Also the backbone of pretty much everything else
     
     def NNMod (a, b) {
         ret a - ((a // b) * b)
@@ -36,11 +28,14 @@ def null (x) {
 
 $!
 def not (bool) {
+    # Inverts a boolean
     ret (bool - 1) / -1
 }
 
-def parseBool (n) {
-    # 0 -> False, anything else -> True
+def bool (n) {
+    # Converts any number to a the standard boolean
+    # n == 0 -> FALSE
+    # n != 0 -> TRUE
     ret $! null(n)
 }
 
@@ -65,23 +60,26 @@ def elif (bool, a, b) {
 }
 
 def else (value) {
-    # Simply returns the givven value. For sake of readability in nested if else
+    # Simply returns the given value. For sake of readability in nested if else
     ret value
 }
 
 @&
 def and (bool_1, bool_2) {
+    # Logical and
     ret bool_1 * bool_2
 }
 
 @|
 def or (bool_1, bool_2) {
+    # Logical or
     both_zero = null(bool_1) @& null(bool_2)
     ret if(both_zero, 0, 1)
 }
 
 @^
 def xor (bool_1, bool_2) {
+    # Logical xor
     ret if(
         bool_1 @& bool_2,
         0,
@@ -90,20 +88,24 @@ def xor (bool_1, bool_2) {
 
 @!&
 def nand (bool_1, bool_2) {
+    # Logical nand
     ret $! (bool_1 @& bool_2)
 }
 
 @!|
 def nor (bool_1, bool_2) {
+    # Logical nor
     ret $! (bool_1 @| bool_2)
 }
 
 def xnor (bool_1, bool_2) {
+    # Logical xnor
     ret $! (bool_1 @^ bool_2)
 }
 
 def diffSign (a, b) {
-    # negative, positive or null
+    # Checks if two numbers have different signs
+    # Negative, positive, or null
     
     both_zero = null(a) @& null(b)
     
@@ -113,13 +115,14 @@ def diffSign (a, b) {
         ret if(
             one_zero,
             1,
-            (a * b) @!= (abs(a) * abs(b)))
+            (a * b) @!= ((a^2)^0.5 * (b^2)^0.5))
     }
     
     ret if(both_zero, 0, else_res)
 }
 
 def sameSign (a, b) {
+    # Checks if two numbers have the same sign
     ret $! diffSign(a, b)
 }
 
@@ -133,6 +136,7 @@ def positive (x) {
 
 @>
 def greater (a, b) {
+    # Checks if a > b
     ret positive(a - b)
 }
 
@@ -146,11 +150,14 @@ def negative (x) {
 
 @<
 def less (a, b) {
+    # Checks if a < b
     ret negative(a - b)
 }
 
 @>=
 def greaterEqual (a, b) {
+    # Checks if a >= b
+
     def greaterEqualZero (x) {
         ret null(x) @| positive(x)
     }
@@ -160,6 +167,8 @@ def greaterEqual (a, b) {
 
 @<=
 def lessEqual (a, b) {
+    # Checks if a <= b
+
     def lessEqualZero (x) {
         ret null(x) @| negative(x)
     }
@@ -167,91 +176,24 @@ def lessEqual (a, b) {
     ret lessEqualZero(a - b)
 }
 
-def sign (x) {
-    # x < 0  -> -1
-    # x == 0 -> 0
-    # x > 0  -> 1
-    
-    else_res = {
-        ret if(null(x), 0, 1)
-    }
-    
-    ret if(negative(x), -1, else_res)
-}
-
 def max (a, b) {
+    # Returns the maximum of two numbers
     ret if(a @> b, a, b)
 }
 
 def min (a, b) {
+    # Returns the minimum of two numbers
     ret if(a @< b, a, b)
-}
-
-@%
-def mod (a, b) {
-    def NNMod (a, b) {
-        ret a - ((a // b) * b)
-    }
-    
-    ret if(
-        negative(a),
-        {
-            a = abs(a)
-            ret b - NNMod(a, b)
-        },
-        NNMod(a, b)
-    )
-}
-
-def floor (x) {
-    ret x - (x @% 1)
-}
-
-def int (x) {
-    # Only the integer part
-    ret sign(x) * floor(abs(x))
-}
-
-def ceil (x) {
-    ret if(
-        int(x) @== x,
-        x,
-        floor(x) + 1)
-}
-
-def decimal (x) {
-    # Only the decimal part
-    ret x - int(x)
-}
-
-def round (x) {
-    sign = sign(x)
-    x = abs(x)
-    ret sign * if(
-                decimal(x) @< 0.5,
-                int(x),
-                int(x) + 1)
-}
-
-@/?
-def divisible (a, b) {
-    ret null(a @% b)
-}
-
-def even (x) {
-    ret x @/? 2
-}
-
-def odd (x) {
-    ret $! even(x)
 }
 
 $++
 def inc (x) {
+    # Increments a number by 1
     ret x + 1
 }
 
 $--
 def dec (x) {
+    # Decrements a number by 1
     ret x - 1
 }
