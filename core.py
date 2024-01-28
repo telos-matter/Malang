@@ -91,6 +91,7 @@ class Operation ():
     float limitations.
     '''
     
+    count = 0
     def __init__(self, op: OP_SET, a: Number | Type[Operation], b: Number | Type[Operation]) -> None:
         '''`op`: the operation to preform, one from the OP_SET\n
         `a`: the first argument as a number or another Operation\n
@@ -98,6 +99,9 @@ class Operation ():
         assert type(op) == OP_SET, f"Not from the OP set: {op}"
         assert type(a) == Operation or isinstance(a, Number), f"Neither a Number nor an Operation: {a}"
         assert type(b) == Operation or isinstance(b, Number), f"Neither a Number nor an Operation: {b}"
+        
+        # Increment the count
+        Operation.count += 1
         
         # Initial operations count is 1, which is self.
         operations_count = 1 
