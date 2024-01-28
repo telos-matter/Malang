@@ -3,8 +3,6 @@
 
 include std # Requires the std library
 
-include assert
-
 PI_TWO = 1.57079632679490   # pi/2
 PI     = 3.141592653589793
 TWO_PI = 6.283185307179586  # 2*pi
@@ -103,7 +101,7 @@ def exp(x) {
 
 def ln(x) {
     # TODO impl
-    ret assert(FALSE)
+    ret 0/0
 }
 
 def log(x, n) {
@@ -169,17 +167,17 @@ def tan(x) {
 
 def asin(x) {
     # TODO impl
-    ret assert(FALSE)
+    ret 0/0
 }
 
 def acos(x) {
     # TODO impl
-    ret assert(FALSE)
+    ret 0/0
 }
 
 def atan(x) {
     # TODO impl
-    ret assert(FALSE)
+    ret 0/0
 }
 
 def degrees(rad) {
