@@ -1682,7 +1682,7 @@ def run (options: dict, args: list[Number]) -> None:
             print(f"🤖 The raw result is {original_result}")
         else:
             print(f"🧾 The result is {result}")
-        print(f"🏃🏻 It took {count} operation{['', 's'][0 if count == 1 else 1]} to compute the result")
+        print(f"🏃🏻 It took {count} mathematical operation{['', 's'][0 if count == 1 else 1]} to compute the result (but only {Operation.count} Operation object{['', 's'][0 if Operation.count == 1 else 1]})")
         print(f"⏱️  This whole process took {duration} seconds")
     else:
         print(result, end='')
