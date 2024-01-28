@@ -150,7 +150,7 @@ def cos(x, sin_x) {
                 -1,
                 1)
     
-    ret coef * (1 - sin_x^2)^0.5
+    ret coef * (abs(1 - sin_x^2))^0.5 # Abs to make sure it's positive. Because sin(PI_TWO) = 1.0000000000000002
 }
 
 def cos(x) {
@@ -161,7 +161,10 @@ def cos(x) {
 }
 
 def tan(x) {
-    ret sin(x)/cos(x)
+    # Returns the tangent of x
+
+    sin_x = sin(x)
+    ret sin_x / cos(x, sin_x)
 }
 
 def asin(x) {
