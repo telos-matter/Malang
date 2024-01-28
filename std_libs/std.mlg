@@ -8,22 +8,27 @@ def null (x) {
     # Checks if a number is null, i.e. equal to zero
     # Also the backbone of pretty much everything else
     
-    def NNMod (a, b) {
-        ret a - ((a // b) * b)
-    }
+    # Raw version
+    # def NNMod (a, b) {
+    #     ret a - ((a // b) * b)
+    # }
     
-    def NNFloor (x) {
-        ret x - NNMod(x, 1)
-    }
+    # def NNFloor (x) {
+    #     ret x - NNMod(x, 1)
+    # }
     
-    def function (x) {
-        # This function only equals to 0 when x is 0.
-        # Domain of this function is (-inf, +inf) -> [0, 1).
-        abs_x = (x^2)^0.5 # Abs function
-        ret abs_x / (abs_x +10) # 10 for "damping", could do with any positive value
-    }
+    # def function (x) {
+    #     # This function only equals to 0 when x is 0.
+    #     # Domain of this function is (-inf, +inf) -> [0, 1).
+    #     abs_x = (x^2)^0.5 # Abs function
+    #     ret abs_x / (abs_x +10) # 10 for "damping", could do with any positive value
+    # }
     
-    ret NNFloor(1 -function(x))
+    # ret NNFloor(1 -function(x))
+
+    # Inline optimized version
+    abs_x = (x^2)^0.5
+    ret (1 - abs_x / (abs_x +10)) // 1
 }
 
 $!
