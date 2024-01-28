@@ -5,11 +5,12 @@ include std # Requires the std library
 
 include assert
 
+PI_TWO = 1.57079632679490   # pi/2
 PI     = 3.141592653589793
-TWO_PI = 6.283185307179586
+TWO_PI = 6.283185307179586  # 2*pi
 NICE   = 69
 E      = 2.718281828459045
-LN_2   = 0.6931471805599453
+LN_2   = 0.6931471805599453 # ln(2)
 
 def abs (x) {
     # Returns the absolute value of x
@@ -110,8 +111,33 @@ def log(x, n) {
 }
 
 def sin(x) {
-    # TODO impl
-    ret assert(FALSE)
+    # Returns the sine of x
+    # Uses the Taylor series
+
+    THREE_PI_TWO = 4.71238898038469 # 3*pi/2
+
+    sign = if(negative(x), -1, 1)
+    x = abs(x)
+    x = x @% TWO_PI
+
+    _4th_quarter = x @> THREE_PI_TWO
+    _2nd_half = x @> PI_TWO
+    x = if(_4th_quarter,
+            x - TWO_PI,
+            elif(_2nd_half,
+                x - PI,
+                x))
+    coef = if(_4th_quarter,
+                1,
+                elif(_2nd_half,
+                    -1,
+                    1))
+
+    x = x * sign
+
+    # Taylor series up to the 10th term
+    res = x - x^3/6 + x^5/120 - x^7/5040 + x^9/362880 - x^11/39916800 + x^13/6227020800 - x^15/1307674368000 + x^17/355687428096000 - x^19/121645100408832000 + x^21/51090942171709440000
+    res = res * coef
 }
 
 def cos(x) {
