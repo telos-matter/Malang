@@ -1,0 +1,32 @@
+
+# Would be a shame to make this whole
+# language, and to not recreate the
+# the video that inspired it!
+
+# https://www.youtube.com/watch?v=j5s0h42GfvM
+
+# Unfortunately tho, it can't handle anything above 5 😆
+
+include std, math
+
+def factorial (n) {
+    res = 1
+    for (i: 2: n) {
+        res = res * i
+    }
+}
+
+def main (n) {
+    res = 1
+    for (i: 1: 2^n) {
+        res = res + floor({
+            denominator = 0
+            for (j: 1: i) {
+                cos_value = cos(PI*(factorial(j - 1) +1)/j)
+                denominator = denominator + floor(cos_value^2)
+            }
+            
+            ret (n/denominator)^(1/n)
+        })
+    }
+}
