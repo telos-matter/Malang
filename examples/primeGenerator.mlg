@@ -7,6 +7,8 @@
 
 # Unfortunately tho, it can't handle anything above 5 😆
 
+# TODO optimize. We have function to check if null.
+
 include std, math
 
 def factorial (n) {
