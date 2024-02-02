@@ -1,5 +1,10 @@
 - "Booleans" here are as such:
-            True is 1 and False is 0
+	TRUE is 1 and FALSE is 0
+	Anything else is "invalid"
+
+- Most functions don't check for the coherency of the parameters, and will only give you valid results if the parameters are coherent. You can't give the if statement 2 in the condition and expect it work and consider it as TRUE
+
+- Negative number exists as they re so -5^2 == 25 but - 5^2 is -25
 
 - Keep in mind (that in order to keep stuff mathematically correct) when using the if statements you can't just put whatever in the else part, like div by zero. It still is a function after all, both arguments get evaluated
 - NN in methods refer to non-negative, meaning it only works properly with positive numbers or null
@@ -7,5 +12,4 @@
 
 TODOS:
 
-
-
+Add += -= ...
