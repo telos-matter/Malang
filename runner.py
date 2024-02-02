@@ -164,7 +164,7 @@ def parseSourceFile (file_path: str) -> list[Token]:
                 return None
         
         FILE_EXT = '.mlg'
-        STD_LIBS_DIR = 'std_libs'
+        STD_LIBS_DIR = 'libs'
         STD_LIBS_DIR_PATH = os.path.join(os.path.dirname(__file__), STD_LIBS_DIR)
         
         file_name = os.path.basename(file_path)
