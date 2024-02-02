@@ -11,6 +11,7 @@ from typing import Type
 from enum import Enum, auto
 from numbers import Number
 
+# TODO: consider adding +=, -=, *=.. ?
 
 class Token ():
     class Type (Enum):
