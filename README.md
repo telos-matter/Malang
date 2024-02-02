@@ -13,4 +13,28 @@ TODO, lol
 
 ***
 
+# Requirements
+Nothing, just `python 3.10` or newer.
+
+# How-to
+After cloning the repo, you can run files using [malang.py](malang.py) like so:
+```console
+$ python3 malang.py file_to_run
+```
+
+Don't forget the check out the couple of options available when running a file by using:
+```console
+$ python3 malang.py -h
+```
+
+# Examples
+Some examples are available in the [examples dir](examples). A favorite is the [FizzBuzz](examples/fizzBuzz.mlg) example, as that it uses all the interessting aspects of the language.
+
+You can run it like so:
+```console
+$ python3 malang.py -i examples/fizzBuzz 15
+```
+
+***
+
 > **Note:** do mention this repo in case of any public use.
