@@ -1,0 +1,5 @@
+include str
+
+# Hello world example
+
+print("Hello, world!")

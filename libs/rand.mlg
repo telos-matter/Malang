@@ -1,0 +1,38 @@
+# The random library
+
+RANDOM_SEED = 42
+RAND_MAX = 2^32 - 1
+
+def next () {
+    # LCG random number generator
+    
+    A = 1_664_525
+    C = 1_013_904_223
+    M = RAND_MAX +1
+    
+    @%
+    def NNMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+    
+    ext RANDOM_SEED = (A * RANDOM_SEED + C) @% M
+    ret RANDOM_SEED
+}
+
+def rand () {
+    # Returns a random number between [0, 1) (0 included, 1 excluded)
+    
+    ret next() / (RAND_MAX +1)
+}
+
+def rand(a, b) {
+    # Returns a random number between [a, b) (a included, b excluded)
+    
+    ret rand()*(b - a) +a
+}
+
+def rand(a) {
+    # Returns a random number between [0, a) (0 included, a excluded)
+    
+    ret rand(0, a)
+}

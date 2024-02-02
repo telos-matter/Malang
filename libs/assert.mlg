@@ -1,0 +1,8 @@
+# A library that provides a single function, that of the same name
+
+def assert (condition) {
+    # Assert that condition is True by
+    # dividing on it (If it's FALSE then zero division error)
+    
+    ret 1/condition
+}

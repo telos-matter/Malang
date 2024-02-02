@@ -1,109 +1,29 @@
-import math
-import sys
+#!/usr/bin/env python3
 
-# TODO mention tsoading
-
-def iota () -> int:
-    iota.counter += 1
-    return iota.counter
-iota.counter = -1
-
-OP_ADD = iota()
-OP_SUB = iota()
-OP_MUL = iota()
-OP_DIV = iota()
-OP_IDIV = iota()
-OP_POW = iota()
-OP_SQRT = iota()
-OP_LN = iota()
-OP_SIN = iota()
-OP_COS = iota()
-OP_COUNT = iota() # Not using it really
-
-def ADD (a: float, b: float) -> float:
-    return a + b
-
-def SUB (a: float, b: float) -> float:
-    return a - b
-
-def MUL (a: float, b: float) -> float:
-    return a * b
-
-def DIV (a: float, b: float) -> float:
-    return a / b
-
-def IDIV (a: float, b: float) -> float:
-    return a // b
-
-def POW (a: float, b: float) -> float:
-    return a ** b
-
-def SQRT (n: float) -> float:
-    return math.sqrt(n)
-
-def LN (n: float) -> float:
-    return math.log(n)
-
-def SIN (n: float) -> float:
-    return math.sin(n)
-
-def COS (n: float) -> float:
-    return math.cos(n)
-
-
-"""
-A program is always a tuple of two things:
-1. The op_code
-2. A list of the args
-Then ofc the individual args can be another program, i.e. another tuple
-"""
-
-sys.setrecursionlimit(10_000) # If you are wondering, cuz i was, if the change is global (to all future python instances), no it is not, i tested it
-
-def evaluateOP (op_code: int, args: list) -> float:
-    for i, arg in enumerate(args[:]):
-        if isinstance(arg, tuple):
-            args[i] = evaluateOP(arg[0], arg[1])
+if __name__ == '__main__':
+    import argparse
     
-    if op_code == OP_ADD:
-        a, b = args
-        return ADD(a, b)
+    MAIN_FUNCTION_ARGS_NAME = 'args' # The name of the argument in the ArgumentParser that refers to the args that will be passed to the main function
     
-    elif op_code == OP_SUB:
-        a, b = args
-        return SUB(a, b)
+    parser = argparse.ArgumentParser(
+        prog='Malang',
+        description='Runs a Malang file',
+        epilog='https://github.com/telos-matter/Malang'
+        )
     
-    elif op_code == OP_MUL:
-        a, b = args
-        return MUL(a, b)
+    parser.add_argument('-d', '--debug', action='store_true', help='run with debug info.')
+    parser.add_argument('-s', '--show', action='store_true', help='show the operation, a.k.a. the program. Use only with small programs.')
+    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose about the program and the output.')
+    parser.add_argument('-i', '--interpret', action='store_true', help='tries to interpret the output if possible. Either as ASCII chars or a boolean value.')
+    parser.add_argument('file_path', help='the file to run.')
+    parser.add_argument(MAIN_FUNCTION_ARGS_NAME, type=float, nargs='*', help='arguments to be passed to the main function.')
     
-    elif op_code == OP_DIV:
-        a, b = args
-        return DIV(a, b)
+    options = vars(parser.parse_args())
+    args = options[MAIN_FUNCTION_ARGS_NAME]
+    del options[MAIN_FUNCTION_ARGS_NAME]
     
-    elif op_code == OP_IDIV:
-        a, b = args
-        return IDIV(a, b)
-    
-    elif op_code == OP_POW:
-        a, b = args
-        return POW(a, b)
-    
-    elif op_code == OP_SQRT:
-        n = args[0]
-        return SQRT(n)
-    
-    elif op_code == OP_LN:
-        n = args[0]
-        return LN(n)
-    
-    elif op_code == OP_SIN:
-        n = args[0]
-        return SIN(n)
-    
-    elif op_code == OP_COS:
-        n = args[0]
-        return COS(n)
-    
-    else:
-        raise Exception(f"Unknown OP: {op_code}, with args: {args}")
+    from runner import run
+    run(options, args)
+
+else:
+    raise Exception(f"This file is expected to be run as the main one")

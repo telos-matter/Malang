@@ -1,0 +1,8 @@
+# Factorial example
+
+def main (n) {
+    res = 1
+    for (i: 2: n) {
+        res = res * i
+    }
+}

@@ -1,0 +1,276 @@
+# String library.
+
+# Since this is computed using math, it is important to know
+# how strings work in this language; that is because
+# some mechanics that one is used to in other programming languages
+# are not the same here.
+# While in most other languages Strings are represented
+# as an array or list of chars; in this one, and because
+# the only data type that exist is Numbers, String
+# are represented using a Number.
+# A single ASCII character can be represented with a number
+# from 0 to 255. To represent two characters we can simply
+# shift the first character by 255 to the left and add
+# the second one. For example: if we want to represent
+# 'a' we could simply use the number 97
+# (its ASCII value). And if we wanted to represent
+# "ab" we could first shift 'a' by multiply 97 with
+# 2^8 == 256, and adding 98 (the ASCII value for `b`).
+# That would give us (97 * 256) + 98 == 24930, so
+# the string "ab" is the number `24930`.
+# If you are familiar with bit shifting then that should've
+# made sense, and I don't think you need further explanation.
+# If not, then imagine this: you have a favorite digit (a number
+# from 0 to 9), let's say `6`, and you want to keep that digit
+# in a number variable called `fav`. So `fav` is now
+# equal to `6`. Now suppose you have
+# another new favorite number, let's say `9`, and you
+# want to keep your two favorite digits in the same
+# number variable `fav` so that you can keep track
+# of them together easily, how could you do that? You
+# can't simply add the two digits because that would
+# give you `15`, and you wouldn't know if your favorite digits
+# were `6` and `9` or `7` and `8` (because 7 + 8 also equals 15).
+# One way to do this is to move your first favorite number, `6`,
+# to the left by multiplying it by `10`, and then adding
+# your second favorite digit ,`9`, to it. Now `fav` is equal
+# to `69` and you know that the first digit of `fav` is your
+# first favorite number, and that the second one is the second favorite.
+# And no matter what your favorite digits were, as long as they
+# are between 0 and 9, this trick would work. The idea
+# is to look at the variable `fav` not as a number as it is. But
+# rather as a composition of numbers put one next to the
+# other. Hope that made sense.
+
+# And so, since Strings are represented using numbers, this
+# comes with some inconveniences. Namely that an "empty"
+# string, and a string containing only null characters `\0`
+# and the number 0 are all the same.
+# That also results in that any leading (to the left)
+# null characters `\0` are discarded.
+
+# Also strings' index is 1-based. Why? Because I wanted to. What are you going to do about it, cry to ur mom? (But seriously tho, because it is easier. Also reinforces the fact that loops are inclusive, and also there is no arrays so it's actually better that way I'd say)
+
+# Implementation limitation:
+#   - Strings can be arbitrarily long (because
+#   Python integers can be arbitrarily long),
+#   but, ATM, the `len` function, which returns
+#   the length of a string, can't
+#   handle Strings longer than `MAX_LEN`
+#   (which is a value defined in the function).
+#   Subsequently, any function that uses
+#   this function `len` has that limitation as well.
+#   - The `MAX_LEN` value is chosen arbitrarily
+#   and you can modify it to fit your needs. Right now
+#   it's 1000 and that should fit most use cases.
+#   - It is mention whenever a function has
+#   such limitations.
+
+# Notes:
+#   - Some of the function that are defined in the std library are redefined
+#   here (but only inside function, so they are invisible outside)
+#   because I don't want to include the std lib in here, and I
+#   want to keep this one a stand-alone lib.
+#   - Most of the functions expect the input values to be coherent
+#   and preform no checks on their correctness, for example
+#   no String can be a negative number, and similar stuff. And
+#   so in order for the functions to return the proper result
+#   the input must be proper.
+
+
+def same (str_1, str_2) {
+    # Returns TRUE if `str_1` is the same as `str_2`, FALSE otherwise.    
+
+    # Needed functions
+    def null (x) {
+        def NNMod (a, b) {
+            ret a - ((a // b) * b)
+        }
+        
+        def NNFloor (x) {
+            ret x - NNMod(x, 1)
+        }
+        
+        def function (x) {
+            abs_x = (x^2)^0.5 # Abs function
+            ret abs_x / (abs_x +10)
+        }
+        
+        ret NNFloor(1 -function(x))
+    }
+
+    @==
+    def equalNumber (a, b) {
+        ret null(a - b)
+    }
+
+    ret str_1 @== str_2 # Two strings are the same if they are the same number
+}
+
+def empty (str) {
+    # Returns TRUE if `str` is empty (length == 0), FALSE otherwise.
+
+    ret same(str, "")
+}
+
+def len(str) {
+    # Returns the length of a string. The string can't be longer than MAX_LEN == 1000
+
+    # Needed function
+    $!
+    def not (bool) {
+        ret (bool - 1) / -1
+    }
+
+    for (i: 0: 1000) { # for (i: 0: MAX_LEN). Calls to this function won't give results larger than MAX_LEN. Don't make MAX_LEN a variable so that the loops get expanded once.
+        
+        for (_: $! empty(str): 0) { # Real if statement. If you feel that that's cheating, the commented version of this code below does the same. But this is faster
+            ret i
+        }
+        
+        str = str // 256 # x // 256 is x // 2^8 is x >> 8
+    }
+    # Raise an exception because the length of the string is greater than MAX_LEN
+    ret 0/0 
+
+    # for (i: 1: 1000) {
+    #     res = if (empty(str), res, i)
+    #     str = str // 2^8
+    # }
+    # _ = 0/empty(str)
+}
+
+def append (str_1, str_2, str_2_len) {
+    # Appends `str_2` with length `str_2_len` at the end of `str_1`
+    ret (str_1 * 2^(8 * str_2_len)) + str_2
+}
+
+# Limitation: `str_2` can't be longer than MAX_LEN
+@+
+def append (str_1, str_2) {
+    # Appends `str_2` at the end of `str_1`
+    ret append(str_1, str_2, len(str_2))
+}
+
+def charAt (str, i, len) {
+    # Returns the char at `i` in the string `str` with length `len`.
+    # String indexing is 1-based
+
+    # Needed function
+    @%
+    def NNMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+
+    str = str // (256 ^ (len - i))
+    ret str @% 256
+}
+
+# Limitation: `str` can't be longer than MAX_LEN
+def charAt (str, i) {
+    # Returns the char at `i` in the string `str`.
+    # String indexing is 1-based
+
+    ret charAt(str, i, len(str))
+}
+
+# TODO add substring
+
+# TODO add index
+
+# TODO add reverse
+
+# TODO add @in (contains)
+
+def atoi (str, len) {
+    # Parses the ASCII string `str` with length `len` to an integer
+
+    # Needed function
+    def if (bool, a, b) {
+        ret (bool * a) - (bool - 1) * b
+    }
+
+    negative = same('-', charAt(str, 1, len))
+    start = if(negative, 2, 1)
+    for (i: start: len) {
+        # Shift to the left and subtract the ASCII code for 0
+        res = (res * 10) + charAt(str, i, len) - '0'
+    }
+    ret if(negative, -1 * res, res)
+}
+
+# Limitation: length of `str` can't be longer than MAX_LEN
+def atoi (str) {
+    # Parses the ASCII string `str` to an integer
+    ret atoi(str, len(str))
+}
+
+def itoa (int, len) {
+    # Parses the integer `int` with `len` many digits to an ASCII string
+
+    # Needed functions
+    def negative (int) {
+        # Dirty hack to determine if the number is negative. I don't want to include the std lib, and if I don't, I have to rewrite all the functions up to negative instead of this simple one
+        for (_: 0: int) {
+            ret 0
+        }
+        ret 1
+    }
+
+    def if (bool, a, b) {
+        ret (bool * a) - (bool - 1) * b
+    }
+
+    @%
+    def NNMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+
+    res = if(negative(int), "-", "")
+    int = (int^2)^0.5 # Abs function
+    for (i: 0: len - 1: -1) {
+        digit = (int // 10^i) @% 10
+        res = append(res, digit +48, 1)
+    }
+}
+
+# Limitation: absolute value of `int` can't be larger than 10^1000. Not the same as `MAX_LEN`, different functions
+def itoa (int) {
+    # Parses the integer `int` to an ASCII string
+
+    # Needed functions
+    $!
+    def not (bool) {
+        ret (bool - 1) / -1
+    }
+
+    def intLen(int) {
+        # Returns how many digits are in the integer.
+        # Absolute value of `int` can't be larger than 10^1000
+        
+        int = (int^2)^0.5 # Abs value
+        for (i: 1000) {
+            int = int // 10
+            
+            for (_: $! same(int, 0): 0) { # Real if statement. The version before didn't use this if you think that that's cheating, but it's slower
+                ret i
+            }
+        }
+        # If we got here then `int` is larger than 10^1000
+        ret 0/0
+    }
+
+    ret itoa(int, intLen(int))
+}
+
+# Limitation: the `str` you "print" with each call can't be longer than MAX_LEN
+def print (str, end) {
+    # Keeps appending to the external res, so res shouldn't be used for anything else.
+    ext res = ext_res @+ str @+ end
+}
+
+# Limitation: the `str` you "print" with each call can't be longer than MAX_LEN
+def print (str) {
+    # Does same thing as print, but with end being a new line
+    ext res = append(ext_res @+ str, '\n', 1)
+}

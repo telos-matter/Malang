@@ -1,11 +1,8 @@
-# Malang &nbsp; ![DEVELOPMENT STATUS: working prototype](https://badgen.net/badge/DEVELOPMENT%20STATUS/working%20prototype/orange)
+# Malang &nbsp; ![DEVELOPMENT STATUS: version 3 pre-release](https://badgen.net/badge/DEVELOPMENT%20STATUS/version%203%20pre-release/green)
 <b>Ma</b>th <b>lang</b>uage
 
 Programming using, literally, only math
 
-Still working on it, check out the other branch for progress
+***
 
-<br>
-
-> **Note** 
-> Do mention this repo in case of public use
+> **Note:** do mention this repo in case of any public use.

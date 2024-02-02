@@ -1,0 +1,191 @@
+# The Math library.
+# Contains different math functions and constants
+
+include std # Requires the std library
+
+PI_TWO = 1.57079632679490   # pi/2
+PI     = 3.141592653589793
+TWO_PI = 6.283185307179586  # 2*pi
+NICE   = 69
+E      = 2.718281828459045
+LN_2   = 0.6931471805599453 # ln(2)
+
+def abs (x) {
+    # Returns the absolute value of x
+    ret (x^2)^0.5
+}
+
+def sqrt (x) {
+    # Returns the square root of x
+    ret x ^ 0.5
+}
+
+def nroot (x, n) {
+    # Returns the n-th root of x
+    ret x ^ (1/n)
+}
+
+def sign (x) {
+    # Returns the sign of x;
+    #   x < 0 -> -1
+    #   x = 0 ->  0
+    #   x > 0 ->  1
+    
+    ret if(negative(x),
+        -1,
+        elif(null(x),
+            0,
+            1))
+}
+
+@%
+def mod (a, b) {
+    # Returns the remainder of a // b
+
+    def NNMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+    
+    ret if(negative(a),
+        {
+            a = abs(a)
+            ret b - NNMod(a, b)
+        },
+        NNMod(a, b)
+    )
+}
+
+def floor (x) {
+    # Returns the floor of x
+    ret x - (x @% 1)
+}
+
+def int (x) {
+    # Returns the integer part of x
+    ret sign(x) * floor(abs(x))
+}
+
+def ceil (x) {
+    # Returns the ceiling of x
+    ret if(
+        int(x) @== x,
+        x,
+        floor(x) + 1)
+}
+
+def decimal (x) {
+    # Returns the decimal part of x
+    ret x - int(x)
+}
+
+def round (x) {
+    # Returns the rounded value of x
+    sign = sign(x)
+    x = abs(x)
+    ret sign * if(
+                decimal(x) @< 0.5,
+                int(x),
+                int(x) + 1)
+}
+
+@/?
+def divisible (a, b) {
+    # Returns TRUE if a is divisible by b, FALSE otherwise
+    ret null(a @% b)
+}
+
+def exp(x) {
+    # Returns the exponential of x
+    ret E ^ x
+}
+
+def ln(x) {
+    # TODO impl
+    ret 0/0
+}
+
+def log(x, n) {
+    ret ln(x)/ln(n)
+}
+
+def sin(x) {
+    # Returns the sine of x
+    # Uses the Taylor series
+
+    THREE_PI_TWO = 4.71238898038469 # 3*pi/2
+
+    sign = if(negative(x), -1, 1)
+    x = abs(x)
+    x = x @% TWO_PI
+
+    _4th_quarter = x @> THREE_PI_TWO
+    _2nd_half = x @> PI_TWO
+    x = if(_4th_quarter,
+            x - TWO_PI,
+            elif(_2nd_half,
+                x - PI,
+                x))
+    coef = if(_4th_quarter,
+                1,
+                elif(_2nd_half,
+                    -1,
+                    1))
+
+    x = x * sign
+
+    # Taylor series up to the 10th term
+    res = x - x^3/6 + x^5/120 - x^7/5040 + x^9/362880 - x^11/39916800 + x^13/6227020800 - x^15/1307674368000 + x^17/355687428096000 - x^19/121645100408832000 + x^21/51090942171709440000
+    ret coef * res
+}
+
+def cos(x, sin_x) {
+    # Returns the cosine of x, whose sine is sin_x
+
+    THREE_PI_TWO = 4.71238898038469 # 3*pi/2
+
+    x = abs(x) @% TWO_PI
+    coef = if((PI_TWO @< x) @& (x @< THREE_PI_TWO),
+                -1,
+                1)
+    
+    ret coef * (abs(1 - sin_x^2))^0.5 # Abs to make sure it's positive. Because sin(PI_TWO) = 1.0000000000000002
+}
+
+def cos(x) {
+    # Returns the cosine of x
+    # Uses the Pythagorean identity
+
+    ret cos(x, sin(x))
+}
+
+def tan(x) {
+    # Returns the tangent of x
+
+    sin_x = sin(x)
+    ret sin_x / cos(x, sin_x)
+}
+
+def asin(x) {
+    # TODO impl
+    ret 0/0
+}
+
+def acos(x) {
+    # TODO impl
+    ret 0/0
+}
+
+def atan(x) {
+    # TODO impl
+    ret 0/0
+}
+
+def degrees(rad) {
+    # Converts radians to degrees
+    ret rad * 180 / PI
+}
+
+def radians(deg) {
+    # Converts degrees to radians
+    ret deg * PI / 180
+}

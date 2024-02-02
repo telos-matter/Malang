@@ -1,0 +1,204 @@
+# The standard library.
+# Has the basic functions to get you going..
+
+FALSE = 0
+TRUE = 1
+
+def null (x) {
+    # Checks if a number is null, i.e. equal to zero
+    # Also the backbone of pretty much everything else
+    
+    # Raw version
+    # def NNMod (a, b) {
+    #     ret a - ((a // b) * b)
+    # }
+    
+    # def NNFloor (x) {
+    #     ret x - NNMod(x, 1)
+    # }
+    
+    # def function (x) {
+    #     # This function only equals to 0 when x is 0.
+    #     # Domain of this function is (-inf, +inf) -> [0, 1).
+    #     abs_x = (x^2)^0.5 # Abs function
+    #     ret abs_x / (abs_x +10) # 10 for "damping", could do with any positive value
+    # }
+    
+    # ret NNFloor(1 -function(x))
+
+    # Inline optimized version
+    abs_x = (x^2)^0.5
+    ret (1 - abs_x / (abs_x +10)) // 1
+}
+
+$!
+def not (bool) {
+    # Inverts a boolean
+    ret (bool - 1) / -1
+}
+
+def bool (n) {
+    # Converts any number to a the standard boolean
+    # n == 0 -> FALSE
+    # n != 0 -> TRUE
+    ret $! null(n)
+}
+
+@==
+def equalNumber (a, b) {
+    ret null(a - b)
+}
+
+@!=
+def diffNumber (a, b) {
+    ret $! null(a - b)
+}
+
+def if (bool, a, b) {
+    # If bool is true return a otherwise return b
+    ret (bool * a) - (bool - 1) * b
+}
+
+def elif (bool, a, b) {
+    # Does same thing as if but changed the name to offer more readability
+    ret if (bool, a, b)
+}
+
+def else (value) {
+    # Simply returns the given value. For sake of readability in nested if else
+    ret value
+}
+
+@&
+def and (bool_1, bool_2) {
+    # Logical and
+    ret bool_1 * bool_2
+}
+
+@|
+def or (bool_1, bool_2) {
+    # Logical or
+    both_zero = null(bool_1) @& null(bool_2)
+    ret if(both_zero, 0, 1)
+}
+
+@^
+def xor (bool_1, bool_2) {
+    # Logical xor
+    ret if(
+        bool_1 @& bool_2,
+        0,
+        bool_1 @| bool_2)
+}
+
+@!&
+def nand (bool_1, bool_2) {
+    # Logical nand
+    ret $! (bool_1 @& bool_2)
+}
+
+@!|
+def nor (bool_1, bool_2) {
+    # Logical nor
+    ret $! (bool_1 @| bool_2)
+}
+
+def xnor (bool_1, bool_2) {
+    # Logical xnor
+    ret $! (bool_1 @^ bool_2)
+}
+
+def diffSign (a, b) {
+    # Checks if two numbers have different signs
+    # Negative, positive, or null
+    
+    both_zero = null(a) @& null(b)
+    
+    else_res = {
+        one_zero = null(a) @| null(b)
+        
+        ret if(
+            one_zero,
+            1,
+            (a * b) @!= ((a^2)^0.5 * (b^2)^0.5))
+    }
+    
+    ret if(both_zero, 0, else_res)
+}
+
+def sameSign (a, b) {
+    # Checks if two numbers have the same sign
+    ret $! diffSign(a, b)
+}
+
+def positive (x) {
+    # Checks if a number is positive: x > 0
+    ret if(
+        null(x),
+        0,
+        diffSign(x, -1))
+}
+
+@>
+def greater (a, b) {
+    # Checks if a > b
+    ret positive(a - b)
+}
+
+def negative (x) {
+    # Checks if a number is negative: x < 0
+    ret if(
+        null(x),
+        0,
+        diffSign(x, 1))
+}
+
+@<
+def less (a, b) {
+    # Checks if a < b
+    ret negative(a - b)
+}
+
+@>=
+def greaterEqual (a, b) {
+    # Checks if a >= b
+
+    def greaterEqualZero (x) {
+        ret null(x) @| positive(x)
+    }
+    
+    ret greaterEqualZero(a - b)
+}
+
+@<=
+def lessEqual (a, b) {
+    # Checks if a <= b
+
+    def lessEqualZero (x) {
+        ret null(x) @| negative(x)
+    }
+    
+    ret lessEqualZero(a - b)
+}
+
+def max (a, b) {
+    # Returns the maximum of two numbers
+    ret if(a @> b, a, b)
+}
+
+def min (a, b) {
+    # Returns the minimum of two numbers
+    ret if(a @< b, a, b)
+}
+
+$++
+def inc (x) {
+    # Increments a number by 1
+    ret x + 1
+}
+
+$--
+def dec (x) {
+    # Decrements a number by 1
+    ret x - 1
+}
