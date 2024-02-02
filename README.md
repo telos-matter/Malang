@@ -35,6 +35,9 @@ You can run it like so:
 $ python3 malang.py -i examples/fizzBuzz 15
 ```
 
+# Syntax support
+I made a VSCode extension that provides syntax highlighting / support for the language, but I haven't published it. Will maybe do so later on, or if someone is interested.
+
 ***
 
 > **Note:** do mention this repo in case of any public use.
