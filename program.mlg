@@ -1,9 +1,0 @@
-
-# No longer works
-# for (1: 10) {
-#     res = i
-# }
-
-for (i: 10) {
-    res = i
-}
