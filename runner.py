@@ -1353,7 +1353,17 @@ def constructProgram (ast: Node, args: list[Number]) -> Operation:
                     op = OP_SET.fromSymbol(value_element.components['op'].lexeme)
                     l_value = processValueElement(value_element.components['l_value'], scope)
                     r_value = processValueElement(value_element.components['r_value'], scope)
-                    return Operation(op, l_value, r_value)
+                    
+                    # A try-except block to catch all kinds of errors (ZeroDivisionError, OverflowError, etc..)
+                    try:
+                        return Operation(op, l_value, r_value)
+                    except Exception as e:
+                        op = value_element.components['op']
+                        l_value = l_value if isinstance(l_value, Number) else l_value.result
+                        r_value = r_value if isinstance(r_value, Number) else r_value.result                        
+                        msg = f"❌ ERROR: This exception `{e.__class__.__name__}: {e}` occurred while evaluating this Operation `{l_value} {op} {r_value}`"
+                        msg += f"\n{op.pointOut()}\n{op.location()}"
+                        raise Exception(msg)
                 
                 elif value_element.type == Node.Type.ORDER_PAREN:
                     return processValueElement(value_element.components['value'], scope)
