@@ -5,9 +5,8 @@
 
 # https://www.youtube.com/watch?v=j5s0h42GfvM
 
-# Unfortunately tho, it can't handle anything above 5 😆
-
-# TODO optimize. We have function to check if null.
+# Unfortunately tho, it can't handle anything above 5 😆 because of float precision
+# Check out optimizedPrimeGenerator.mlg for a version that overcomes that problem, still VERY slow however.
 
 include std, math
 
