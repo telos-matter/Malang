@@ -1614,7 +1614,7 @@ def run (options: dict, args: list[Number]) -> None:
     - `args`: The args that will be passed to the main function'''
     
     import time
-    start = time.time()
+    runner_start = time.time()
     
     FILE_PATH = options['file_path']
     VERBOSE = options['verbose']
@@ -1643,7 +1643,9 @@ def run (options: dict, args: list[Number]) -> None:
     
     if VERBOSE:
         print('👨🏻‍🍳 Constructing and computing the operation..')
+    program_start = time.time()
     program = constructProgram(ast, args)
+    program_duration = time.time() - program_start
     if VERBOSE:
         print('✅ Constructed and computed the operation')
     if SHOW:
@@ -1674,8 +1676,6 @@ def run (options: dict, args: list[Number]) -> None:
                 chars += chr(num)
             result = chars[:: -1]
     
-    end = time.time()
-    duration = end - start
     
     if VERBOSE:
         if INTERPRET:
@@ -1684,6 +1684,7 @@ def run (options: dict, args: list[Number]) -> None:
         else:
             print(f"🧾 The result is {result}")
         print(f"🏃🏻 It took {count} mathematical operation{['', 's'][0 if count == 1 else 1]} to compute the result (but only {Operation.count} Operation object{['', 's'][0 if Operation.count == 1 else 1]})")
-        print(f"⏱️  This whole process took {duration} seconds")
+        print(f"⏱️  Constructing and evaluating the Operation took {program_duration} seconds")
+        print(f"⌛️ This whole took process {time.time() - runner_start} seconds")
     else:
         print(result, end='')
