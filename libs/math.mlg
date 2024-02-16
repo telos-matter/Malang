@@ -38,23 +38,6 @@ def sign (x) {
             1))
 }
 
-@%
-def mod (a, b) {
-    # Returns the remainder of a // b
-
-    def NNMod (a, b) {
-        ret a - ((a // b) * b)
-    }
-    
-    ret if(negative(a),
-        {
-            a = abs(a)
-            ret b - NNMod(a, b)
-        },
-        NNMod(a, b)
-    )
-}
-
 def floor (x) {
     # Returns the floor of x
     ret x - (x @% 1)

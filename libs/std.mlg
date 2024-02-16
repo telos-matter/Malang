@@ -181,6 +181,26 @@ def lessEqual (a, b) {
     ret lessEqualZero(a - b)
 }
 
+@%
+def mod (a, b) {
+    # Returns the remainder of a // b
+
+    def NNMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+    def abs (x) {
+        ret if(negative(x), -1 * x, x)
+    }
+    
+    ret if(negative(a),
+        {
+            a = abs(a)
+            ret b - NNMod(a, b)
+        },
+        NNMod(a, b)
+    )
+}
+
 def max (a, b) {
     # Returns the maximum of two numbers
     ret if(a @> b, a, b)
