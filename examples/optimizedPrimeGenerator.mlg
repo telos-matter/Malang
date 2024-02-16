@@ -1,0 +1,37 @@
+
+# "Optimized" version of primeGenerator.mlg in that there is no float precision problems.
+
+# Only tried it up to n == 9 and it took 40 minutes and well more than 5 GB of RAM. It is not optimized for speed or efficiency.
+# It took 5_578_856_192 mathematical operations to compute the result and 23_862_273 Operation objects.
+
+include std, math
+
+def factorial (n) {
+    res = 1
+    for (i: 2: n) {
+        res = res * i
+    }
+}
+
+def isPrime (n) {
+    @%
+    def NNMod (a, b) {
+        ret a - ((a // b) * b)
+    }
+
+    ret null((factorial(n - 1) +1) @% n)
+}
+
+def main (n) {
+    res = 1
+    for (i: 1: 2^n) {
+        res = res + floor({
+            denominator = 0
+            for (j: 1: i) {
+                denominator = denominator + isPrime(j)
+            }
+            
+            ret (n/denominator)^(1/n)
+        })
+    }
+}
