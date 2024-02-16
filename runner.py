@@ -12,6 +12,7 @@ from enum import Enum, auto
 from numbers import Number
 
 # TODO: consider adding +=, -=, *=.. ?
+# TODO: optimization: how about not checking and adding functions every time you enter the same scope?
 
 class Token ():
     class Type (Enum):
