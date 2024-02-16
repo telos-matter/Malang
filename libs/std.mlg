@@ -188,13 +188,10 @@ def mod (a, b) {
     def NNMod (a, b) {
         ret a - ((a // b) * b)
     }
-    def abs (x) {
-        ret if(negative(x), -1 * x, x)
-    }
     
     ret if(negative(a),
         {
-            a = abs(a)
+            a = (a^2)^0.5
             ret b - NNMod(a, b)
         },
         NNMod(a, b)
