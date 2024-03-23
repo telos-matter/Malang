@@ -8,8 +8,19 @@ That is, any program that you write in the language, becomes a mathematical oper
 You can read the [wiki](https://github.com/telos-matter/Malang/wiki) to understand the **what** and the **how**. But in here I will discuss the
 
 # Why?
+Well mainly because it was a fun / interesting project.
 
-TODO, lol
+I got the idea while watching this [YouTube video](https://www.youtube.com/watch?v=j5s0h42GfvM) that talks about this Prime generating formula. It seemed really fascinating and it was something new to me and I was really intrigued by this idea that a mathematical formula can have features similar to that in programming languages.
+And so I experimented a bit with the idea to see if I can do anything with it, and if I remember correctly, one of the first things I was able to come up with was the `not` gate. And that got me like so: 🤯.
+
+And so the desire of being able to mimic programming language features in math slowly turned into wanting to make it into an actual programming language that is _compiled_ to that.
+
+And while developing it I was always fixated on the idea / concept that
+> I want the numbers and operations to do everything and not the _compiler_ or something else.
+
+And indeed I managed to do so.
+
+Is there any practical real-life use for this programming language? At the moment no, and it's not even turing complete. But it is **my** project and it was really **fun** developing it.
 
 ***
 
