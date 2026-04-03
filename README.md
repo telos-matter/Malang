@@ -22,6 +22,8 @@ And indeed I managed to do so.
 
 Is there any practical real-life use for this programming language? At the moment no, and it's not even turing complete. But it is **my** project and it was really **fun** developing it.
 
+> 03.04.2026 update: Welp, I just learned about [Fractran](https://www.youtube.com/watch?v=rIOITbaqPHY).
+
 ***
 
 # Requirements
